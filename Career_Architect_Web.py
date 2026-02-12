@@ -3,69 +3,55 @@ import json
 import os
 import streamlit as st
 
-# --- MASTER CONFIG (LOCKED) ---
-VERSION = "3.0.1"
+# --- MASTER CONFIG ---
+VERSION = "3.0.2"
 APP_NAME = "The Career Architect"
 COPYRIGHT = "© 2026 Aash Hindocha"
 REGISTRY_FILE = "registry.json"
-# This is the SHA-256 hash for your password
-ADMIN_HASH = "440e0a91370aa89083fe9c7cd83db170587dd53fe73aa58fc70a48cc463dfed7"
 
-# --- SELF-HEALING REGISTRY ---
-def load_registry_safe():
-    # If file doesn't exist or is broken, we REBUILD it right now
-    default_admin = {"admin_aash": {"hash": ADMIN_HASH, "level": 3, "usage": 9999, "expiry": "2099-12-31"}}
+# --- EMERGENCY KEY RESET ---
+# Typing 'architect2026' will now generate the correct hash automatically
+TEMP_RESET_PASSWORD = "architect2026"
+RESET_HASH = hashlib.sha256(TEMP_RESET_PASSWORD.encode()).hexdigest()
+
+def load_registry_emergency():
+    # This FORCES the registry to accept the new password hash
+    admin_data = {"admin_aash": {"hash": RESET_HASH, "level": 3, "usage": 9999, "expiry": "2099-12-31"}}
     if not os.path.exists(REGISTRY_FILE):
         with open(REGISTRY_FILE, "w") as f:
-            json.dump(default_admin, f)
-        return default_admin
-    try:
-        with open(REGISTRY_FILE, "r") as f:
-            data = json.load(f)
-            # Ensure admin is ALWAYS in there
-            if "admin_aash" not in data:
-                data["admin_aash"] = default_admin["admin_aash"]
-            return data
-    except Exception:
-        # If the file is corrupted/unreadable, overwrite it with working data
-        with open(REGISTRY_FILE, "w") as f:
-            json.dump(default_admin, f)
-        return default_admin
+            json.dump(admin_data, f)
+    return admin_data
 
-# --- APP INITIALIZATION ---
+# --- APP START ---
 st.set_page_config(page_title=APP_NAME)
-registry = load_registry_safe()
+registry = load_registry_emergency() # Using the forced reset logic
 
 if 'auth' not in st.session_state:
     st.session_state.auth = False
-if 'user' not in st.session_state:
-    st.session_state.user = None
 
-# --- LOGIN GATE ---
 if not st.session_state.auth:
-    st.title(APP_NAME)
-    st.subheader("System Lock")
+    st.title("🔐 " + APP_NAME)
+    st.info("Emergency Reset Mode Active: Use the temporary password.")
+    
     u = st.text_input("Username").lower().strip()
     p = st.text_input("Password", type="password")
     
     if st.button("Unlock"):
-        user_data = registry.get(u)
-        if user_data:
-            if hashlib.sha256(p.encode()).hexdigest() == user_data["hash"]:
+        if u == "admin_aash":
+            # Check against the temporary reset hash
+            if hashlib.sha256(p.encode()).hexdigest() == RESET_HASH:
                 st.session_state.auth = True
                 st.session_state.user = u
-                st.session_state.level = user_data["level"]
+                st.session_state.level = 3
                 st.rerun()
             else:
-                st.error("Invalid Password.")
+                st.error("Invalid Password. Please use the temporary reset password.")
         else:
-            st.error(f"User '{u}' not recognized.")
+            st.error("Username not recognized.")
     st.stop()
 
 # --- SUCCESS STATE ---
-st.sidebar.success(f"Verified: {st.session_state.user}")
-st.header("Step 1: Personal Information")
-st.info("System access restored. We are back on track.")
+st.success(f"Welcome back, {st.session_state.user}. Access Restored.")
+st.write("We are back in. Shall we restore the Clean UI and move to Step 2?")
 
-# --- FOOTER ---
-st.write(f"--- \n {COPYRIGHT} | Build {VERSION}")
+st.write(f"--- \n {COPYRIGHT}")
