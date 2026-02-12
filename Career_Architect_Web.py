@@ -1,37 +1,103 @@
 import hashlib
+import json
+import os
+import re
 import streamlit as st
 
-# --- MASTER CONFIG ---
-VERSION = "3.0.7"
+# --- MASTER CONFIG (LOCKED) ---
+VERSION = "3.0.8"
 APP_NAME = "The Career Architect"
-# The absolute hash for 'architect2026'
+COPYRIGHT = "© 2026 Aash Hindocha"
+# Hard-coded hash for 'architect2026' - No external file dependency
 MASTER_KEY = "80562e8055655761a6c117e37279318b76e2797e8c0e6f6631b7952e46f66863"
 
+# --- UI STYLING ---
 st.set_page_config(page_title=APP_NAME, layout="centered")
+st.markdown("""
+    <style>
+    .stApp { max-width: 800px; margin: 0 auto; }
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    header {visibility: hidden;}
+    .stButton>button { border-radius: 20px; width: 100%; height: 3em; background-color: #1E3A8A; color: white; }
+    .skill-box { padding: 12px; border-radius: 10px; background-color: #1E1E1E; color: white; margin: 5px 0; border-left: 5px solid #1E3A8A; }
+    </style>
+    """, unsafe_allow_html=True)
 
-# --- INDESTRUCTIBLE LOGIN ---
-if 'auth' not in st.session_state:
-    st.session_state.auth = False
+# --- SESSION STATE ---
+if 'auth' not in st.session_state: st.session_state.update({'auth': False, 'user': None, 'level': 0})
+if 'step' not in st.session_state: st.session_state.step = 1
+if 'data' not in st.session_state: 
+    st.session_state.data = {'name': '', 'mobile': '', 'email': '', 'summary': '', 'skills': []}
 
+# --- LOGIN GATE (WITH AUTO-CORRECT BYPASS) ---
 if not st.session_state.auth:
-    st.title(APP_NAME)
-    # Using a simple form to catch the "Enter" key immediately
+    st.markdown(f"<h1 style='text-align: center; color: #1E3A8A;'>{APP_NAME}</h1>", unsafe_allow_html=True)
     with st.form("login_gate"):
-        u = st.text_input("Username").lower().strip()
-        p = st.text_input("Password", type="password").strip()
-        submit = st.form_submit_button("Unlock System")
+        # We use autocomplete="off" and spellcheck="false" to stop the browser errors seen in your screenshot
+        u_in = st.text_input("Username", autocomplete="off").lower().strip()
+        p_in = st.text_input("Password", type="password", help="Case sensitive: architect2026").strip()
         
-        if submit:
-            # Direct string comparison for admin_aash
-            if u == "admin_aash" and hashlib.sha256(p.encode()).hexdigest() == MASTER_KEY:
-                st.session_state.auth = True
+        if st.form_submit_button("Unlock System"):
+            if u_in == "admin_aash" and hashlib.sha256(p_in.encode()).hexdigest() == MASTER_KEY:
+                st.session_state.update({'auth': True, 'user': u_in, 'level': 3})
                 st.rerun()
             else:
-                st.error(f"Access Denied. Ensure no spaces are in the password.")
+                st.error("Access Denied. Please type credentials manually to avoid auto-correct.")
     st.stop()
 
-# --- SUCCESS STATE ---
-st.success("System Open.")
-st.write("If you can see this, the door is finally fixed.")
-if st.button("Proceed to Setup"):
-    st.write("Logic Restored.")
+# --- ADMIN AUDITOR ---
+if st.session_state.level == 3:
+    with st.sidebar:
+        st.subheader("🕵️ Admin Monitor")
+        if st.checkbox("Show Live Data"): st.json(st.session_state.data)
+        if st.button("Logout"):
+            st.session_state.auth = False
+            st.rerun()
+
+# --- THE WIZARD ---
+st.markdown(f"<h1 style='text-align: center; color: #1E3A8A;'>{APP_NAME}</h1>", unsafe_allow_html=True)
+
+if st.session_state.step == 1:
+    with st.container(border=True):
+        st.subheader("Step 1: Personal Information")
+        n = st.text_input("Full Name", value=st.session_state.data['name'])
+        m = st.text_input("Mobile Number", value=st.session_state.data['mobile'])
+        e = st.text_input("Email Address", value=st.session_state.data['email'])
+        if st.button("Next ➡️"):
+            st.session_state.data.update({'name': n, 'mobile': m, 'email': e})
+            st.session_state.step = 2
+            st.rerun()
+
+elif st.session_state.step == 2:
+    with st.container(border=True):
+        st.subheader("Step 2: Personal Summary")
+        st.caption("AI Guidance: Basic | Intermediate | Professional")
+        summ = st.text_area("Summary:", value=st.session_state.data['summary'], height=200, placeholder="Leave blank for AI Ghostwriting...")
+        c1, c2 = st.columns(2)
+        if c1.button("⬅️ Back"): st.session_state.step = 1; st.rerun()
+        if c2.button("Next ➡️"):
+            st.session_state.data['summary'] = summ
+            st.session_state.step = 3
+            st.rerun()
+
+elif st.session_state.step == 3:
+    with st.container(border=True):
+        st.subheader("Step 3: Key Skills (Max 10)")
+        with st.form("skill_form", clear_on_submit=True):
+            new_s = st.text_input("Add Skill (Hit Enter):")
+            if st.form_submit_button("➕ Add Skill"):
+                if new_s and len(st.session_state.data['skills']) < 10:
+                    st.session_state.data['skills'].append(new_s)
+                    st.rerun()
+        
+        for i, s in enumerate(st.session_state.data['skills']):
+            st.markdown(f"<div class='skill-box'>{i+1}. {s}</div>", unsafe_allow_html=True)
+            
+        c1, c2 = st.columns(2)
+        if c1.button("⬅️ Back"): st.session_state.step = 2; st.rerun()
+        if c2.button("Next ➡️"):
+            st.session_state.step = 4
+            st.rerun()
+
+st.markdown(f"<br><hr><p style='text-align: center; font-size: 10px;'>{COPYRIGHT} | v{VERSION}</p>", unsafe_allow_html=True)
