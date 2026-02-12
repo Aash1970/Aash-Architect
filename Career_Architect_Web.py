@@ -1,62 +1,59 @@
 import hashlib
 import json
 import os
-import re
 import streamlit as st
 
-# --- MASTER CONFIG (LOCKED) ---
-VERSION = "3.0.8"
+# --- MASTER CONFIG ---
+VERSION = "3.0.9"
 APP_NAME = "The Career Architect"
 COPYRIGHT = "© 2026 Aash Hindocha"
-# Hard-coded hash for 'architect2026' - No external file dependency
 MASTER_KEY = "80562e8055655761a6c117e37279318b76e2797e8c0e6f6631b7952e46f66863"
 
-# --- UI STYLING ---
 st.set_page_config(page_title=APP_NAME, layout="centered")
+
+# --- UI STYLING ---
 st.markdown("""
     <style>
     .stApp { max-width: 800px; margin: 0 auto; }
-    #MainMenu {visibility: hidden;}
-    footer {visibility: hidden;}
-    header {visibility: hidden;}
-    .stButton>button { border-radius: 20px; width: 100%; height: 3em; background-color: #1E3A8A; color: white; }
-    .skill-box { padding: 12px; border-radius: 10px; background-color: #1E1E1E; color: white; margin: 5px 0; border-left: 5px solid #1E3A8A; }
+    .stButton>button { border-radius: 20px; width: 100%; background-color: #1E3A8A; color: white; }
+    .skill-box { padding: 10px; border-radius: 10px; background-color: #1E1E1E; color: white; margin: 5px 0; border-left: 5px solid #1E3A8A; }
     </style>
     """, unsafe_allow_html=True)
 
 # --- SESSION STATE ---
-if 'auth' not in st.session_state: st.session_state.update({'auth': False, 'user': None, 'level': 0})
+if 'auth' not in st.session_state: st.session_state.auth = False
 if 'step' not in st.session_state: st.session_state.step = 1
 if 'data' not in st.session_state: 
     st.session_state.data = {'name': '', 'mobile': '', 'email': '', 'summary': '', 'skills': []}
 
-# --- LOGIN GATE (WITH AUTO-CORRECT BYPASS) ---
+# --- THE DOOR (v3.0.9) ---
 if not st.session_state.auth:
-    st.markdown(f"<h1 style='text-align: center; color: #1E3A8A;'>{APP_NAME}</h1>", unsafe_allow_html=True)
-    with st.form("login_gate"):
-        # We use autocomplete="off" and spellcheck="false" to stop the browser errors seen in your screenshot
-        u_in = st.text_input("Username", autocomplete="off").lower().strip()
-        p_in = st.text_input("Password", type="password", help="Case sensitive: architect2026").strip()
-        
-        if st.form_submit_button("Unlock System"):
-            if u_in == "admin_aash" and hashlib.sha256(p_in.encode()).hexdigest() == MASTER_KEY:
-                st.session_state.update({'auth': True, 'user': u_in, 'level': 3})
-                st.rerun()
-            else:
-                st.error("Access Denied. Please type credentials manually to avoid auto-correct.")
-    st.stop()
-
-# --- ADMIN AUDITOR ---
-if st.session_state.level == 3:
-    with st.sidebar:
-        st.subheader("🕵️ Admin Monitor")
-        if st.checkbox("Show Live Data"): st.json(st.session_state.data)
-        if st.button("Logout"):
-            st.session_state.auth = False
+    st.title(APP_NAME)
+    u = st.text_input("Username").lower().strip()
+    p = st.text_input("Password", type="password").strip()
+    
+    if st.button("Unlock System"):
+        # PRIMARY LOGIN
+        if u == "admin_aash" and hashlib.sha256(p.encode()).hexdigest() == MASTER_KEY:
+            st.session_state.auth = True
             st.rerun()
+        # EMERGENCY BYPASS (Use this if the above fails)
+        elif u == "unlock" and p == "2026":
+            st.session_state.auth = True
+            st.rerun()
+        else:
+            st.error("Access Denied. Try the Bypass: unlock / 2026")
+    st.stop()
 
 # --- THE WIZARD ---
 st.markdown(f"<h1 style='text-align: center; color: #1E3A8A;'>{APP_NAME}</h1>", unsafe_allow_html=True)
+
+# ADMIN SIDEBAR
+with st.sidebar:
+    st.subheader("Admin Console")
+    if st.button("Logout"):
+        st.session_state.auth = False
+        st.rerun()
 
 if st.session_state.step == 1:
     with st.container(border=True):
@@ -72,8 +69,7 @@ if st.session_state.step == 1:
 elif st.session_state.step == 2:
     with st.container(border=True):
         st.subheader("Step 2: Personal Summary")
-        st.caption("AI Guidance: Basic | Intermediate | Professional")
-        summ = st.text_area("Summary:", value=st.session_state.data['summary'], height=200, placeholder="Leave blank for AI Ghostwriting...")
+        summ = st.text_area("Summary:", value=st.session_state.data['summary'], height=200)
         c1, c2 = st.columns(2)
         if c1.button("⬅️ Back"): st.session_state.step = 1; st.rerun()
         if c2.button("Next ➡️"):
@@ -83,21 +79,18 @@ elif st.session_state.step == 2:
 
 elif st.session_state.step == 3:
     with st.container(border=True):
-        st.subheader("Step 3: Key Skills (Max 10)")
+        st.subheader("Step 3: Key Skills")
         with st.form("skill_form", clear_on_submit=True):
-            new_s = st.text_input("Add Skill (Hit Enter):")
+            new_s = st.text_input("Add Skill:")
             if st.form_submit_button("➕ Add Skill"):
                 if new_s and len(st.session_state.data['skills']) < 10:
                     st.session_state.data['skills'].append(new_s)
                     st.rerun()
-        
         for i, s in enumerate(st.session_state.data['skills']):
             st.markdown(f"<div class='skill-box'>{i+1}. {s}</div>", unsafe_allow_html=True)
-            
         c1, c2 = st.columns(2)
         if c1.button("⬅️ Back"): st.session_state.step = 2; st.rerun()
         if c2.button("Next ➡️"):
-            st.session_state.step = 4
-            st.rerun()
+            st.write("Ready for Step 4")
 
 st.markdown(f"<br><hr><p style='text-align: center; font-size: 10px;'>{COPYRIGHT} | v{VERSION}</p>", unsafe_allow_html=True)
