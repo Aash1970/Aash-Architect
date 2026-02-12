@@ -3,7 +3,7 @@ from datetime import datetime
 import streamlit as st
 
 # --- MASTER CONFIG ---
-VERSION = "3.3.0"
+VERSION = "3.3.1"
 APP_NAME = "The Career Architect"
 COPYRIGHT = "© 2026 Aash Hindocha"
 MASTER_KEY = "80562e8055655761a6c117e37279318b76e2797e8c0e6f6631b7952e46f66863"
@@ -26,7 +26,7 @@ if 'step' not in st.session_state: st.session_state.step = 1
 if 'data' not in st.session_state: 
     st.session_state.data = {'name': '', 'mobile': '', 'email': '', 'summary': '', 'skills': [], 'history': [], 'education': []}
 
-# --- LOGIN ---
+# --- LOGIN GATE ---
 if not st.session_state.auth:
     st.title(f"🔐 {APP_NAME}")
     u = st.text_input("Username").lower().strip()
@@ -36,6 +36,9 @@ if not st.session_state.auth:
             st.session_state.auth = True; st.rerun()
         else: st.error("Access Denied.")
     st.stop()
+
+# --- HEADER ---
+st.markdown(f"<h1 style='text-align: center; color: #1E3A8A;'>{APP_NAME}</h1>", unsafe_allow_html=True)
 
 # --- STEP 1: CONTACT ---
 if st.session_state.step == 1:
@@ -68,7 +71,7 @@ elif st.session_state.step == 3:
 # --- STEP 4: EMPLOYMENT ---
 elif st.session_state.step == 4:
     st.header("Step 4: Experience")
-    st.info("Enter roles in Reverse Chronological Order.")
+    st.write("Enter roles in **Reverse Chronological Order** (Newest First).")
     with st.form("j_form", clear_on_submit=True):
         c, r = st.text_input("Company"), st.text_input("Job Title")
         s, e = st.date_input("Start"), st.date_input("End")
@@ -119,7 +122,7 @@ elif st.session_state.step == 6:
     for ed in d['education']:
         st.markdown(f"<div class='cv-card'><strong>{ed['qual']}</strong><br>{ed['inst']} ({ed['yr']})</div>", unsafe_allow_html=True)
     
-    if st.button("Start New Architect Session"):
+    if st.button("Start New Session"):
         st.session_state.data = {'name': '', 'mobile': '', 'email': '', 'summary': '', 'skills': [], 'history': [], 'education': []}
         st.session_state.step = 1; st.rerun()
 
