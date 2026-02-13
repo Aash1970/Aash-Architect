@@ -1,24 +1,48 @@
-import hashlib
 import streamlit as st
 
-# --- MASTER CONFIG (Referencing Black Box v4.2.0) ---
-VERSION = "4.3.6"
+# --- MASTER CONFIG (Reference: Black Box v4.2.0) ---
+VERSION = "4.3.8"
 APP_NAME = "The Career Architect"
 COPYRIGHT = "© 2026 Aash Hindocha"
-MASTER_KEY = "80562e8055655761a6c117e37279318b76e2797e8c0e6f6631b7952e46f66863"
 
 st.set_page_config(page_title=APP_NAME, layout="wide")
 
-# --- CSS ARCHITECTURE ---
-st.markdown("""
+# --- CSS ARCHITECTURE: FIXING THE OVERLAP & ALIGNMENT ---
+st.markdown(f"""
     <style>
-    .stApp { background-color: #0E1117; color: white; }
-    [data-testid="column"] { display: flex; flex-direction: column; justify-content: flex-end; }
-    .cv-card { padding: 15px; border-radius: 8px; background-color: #1E1E1E; border-left: 5px solid #1E3A8A; margin-bottom: 10px; }
-    div.stButton > button { margin-top: 28px !important; height: 45px; width: 100%; }
-    .footer-text { position: fixed; bottom: 10px; width: 100%; text-align: center; font-size: 12px; color: #555; background-color: #0E1117; padding: 5px 0; z-index: 999; }
+    .stApp {{ background-color: #0E1117; color: white; }}
+    
+    /* FIX 1: Cleaning up the Password Eye Icon overlap */
+    div[data-testid="stTextInput"] label + div {{
+        overflow: visible !important;
+    }}
+    
+    /* FIX 2: Vertical Symmetry for Step 1 */
+    div.stButton > button {{
+        margin-top: 28px !important;
+        height: 42px;
+        width: 100%;
+    }}
+    
+    /* FIX 3: Forced Footer Positioning */
+    .footer-text {{
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        text-align: center;
+        font-size: 12px;
+        color: #888;
+        background-color: #0E1117;
+        padding: 15px 0;
+        z-index: 99999;
+        border-top: 1px solid #333;
+    }}
     </style>
     """, unsafe_allow_html=True)
+
+# --- FORCED FOOTER (This renders REGARDLESS of login status) ---
+st.markdown(f"<div class='footer-text'>{COPYRIGHT} | v{VERSION}</div>", unsafe_allow_html=True)
 
 # --- SESSION STATE ---
 if 'auth' not in st.session_state: st.session_state.auth = False
@@ -32,13 +56,12 @@ if not st.session_state.auth:
     u = st.text_input("Username").lower().strip()
     p = st.text_input("Password", type="password").strip()
     if st.button("Unlock System"):
-        if (u == "unlock" and p == "2026"):
-            st.session_state.auth = True; st.rerun()
-    # MANDATORY FOOTER ON LOGIN
-    st.markdown(f"<div class='footer-text'>{COPYRIGHT} | v{VERSION}</div>", unsafe_allow_html=True)
+        if u == "unlock" and p == "2026":
+            st.session_state.auth = True
+            st.rerun()
     st.stop()
 
-# --- MAIN APP BODY ---
+# --- MAIN APP BODY (v4.3.8) ---
 st.title(f"🏗️ {APP_NAME} | v{VERSION}")
 
 # STEP 1: PERSONAL & SKILLS
@@ -50,24 +73,31 @@ if st.session_state.step == 1:
         st.session_state.data['mobile'] = st.text_input("Mobile Number", st.session_state.data['mobile'])
         st.session_state.data['email'] = st.text_input("Email Address", st.session_state.data['email'])
     with c2:
-        st.session_state.data['summary'] = st.text_area("Professional Summary", st.session_state.data['summary'], height=235)
+        # Professional Summary box height tuned for symmetry
+        st.session_state.data['summary'] = st.text_area("Professional Summary", st.session_state.data['summary'], height=230)
     
     st.divider()
+    
+    # FIXED WORDING: Key Skills / Core Competencies (10 Recommended)
     k = len(st.session_state.data['skills']) + 1
     st.subheader(f"Step 2: Key Skills / Core Competencies (10 Recommended)")
     col_s1, col_s2 = st.columns([4, 1])
-    s_in = col_s1.text_input(f"Enter Skill {k}...", key=f"skill_input_{k}")
+    
+    # Unique key for every input forces the box to clear after clicking "Add"
+    s_in = col_s1.text_input(f"Enter Skill {k}...", key=f"skill_box_{k}")
+    
     if col_s2.button("➕ Add Skill"):
-        if s_in: 
+        if s_in:
             st.session_state.data['skills'].append(s_in)
             st.rerun()
             
     if st.session_state.data['skills']:
         s_cols = st.columns(3)
         for idx, s in enumerate(st.session_state.data['skills']):
-            s_cols[idx % 3].markdown(f"<div class='cv-card'>{idx+1}. {s}</div>", unsafe_allow_html=True)
+            s_cols[idx % 3].markdown(f"<div style='padding:10px; border-left:4px solid #1E3A8A; background:#1E1E1E; margin-bottom:5px;'>{idx+1}. {s}</div>", unsafe_allow_html=True)
     
-    if st.button("Continue to Employment History ➡️"): st.session_state.step = 2; st.rerun()
+    if st.button("Continue to Employment History ➡️"): 
+        st.session_state.step = 2; st.rerun()
 
 # STEP 2: EMPLOYMENT HISTORY
 elif st.session_state.step == 2:
@@ -87,27 +117,6 @@ elif st.session_state.step == 2:
             st.rerun()
     
     for j in st.session_state.data['history']:
-        st.markdown(f"<div class='cv-card'><strong>{j['role']}</strong> at {j['comp']} ({j['period']})</div>", unsafe_allow_html=True)
-
-    c_nav1, c_nav2 = st.columns([1, 1])
-    if c_nav1.button("⬅️ Back"): st.session_state.step = 1; st.rerun()
-    if c_nav2.button("Next to Education ➡️"): st.session_state.step = 3; st.rerun()
-
-# STEP 3: EDUCATION
-elif st.session_state.step == 3:
-    st.header("Step 5: Education & Credentials")
-    with st.form("edu_form", clear_on_submit=True):
-        inst = st.text_input("School / College / University Name")
-        qual = st.text_input("Qualification Earned")
-        yr = st.text_input("Year Completed")
-        if st.form_submit_button("➕ Save Education"):
-            st.session_state.data['education'].append({"inst": inst, "qual": qual, "yr": yr})
-            st.rerun()
-            
-    for e in st.session_state.data['education']:
-        st.markdown(f"<div class='cv-card'>🎓 {e['qual']} - {e['inst']} ({e['yr']})</div>", unsafe_allow_html=True)
-        
-    if st.button("⬅️ Back"): st.session_state.step = 2; st.rerun()
-
-# --- MANDATORY FOOTER (RENDERED LAST ON ALL AUTHENTICATED SCREENS) ---
-st.markdown(f"<div class='footer-text'>{COPYRIGHT} | v{VERSION}</div>", unsafe_allow_html=True)
+        st.write(f"**{j['role']}** at {j['comp']} ({j['period']})")
+    
+    if st.button("⬅️ Back"): st.session_state.step = 1; st.rerun()
