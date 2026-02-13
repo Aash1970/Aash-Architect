@@ -1,34 +1,36 @@
 import streamlit as st
 
 # --- MASTER CONFIG ---
-VERSION = "4.4.0"
+VERSION = "4.4.1"
 APP_NAME = "The Career Architect"
 COPYRIGHT = "© 2026 Aash Hindocha"
 
 st.set_page_config(page_title=APP_NAME, layout="wide")
 
-# --- CSS ARCHITECTURE: THE SURGICAL STRIKE ---
+# --- CSS ARCHITECTURE: THE FINAL VISUAL POLISH ---
 st.markdown(f"""
     <style>
     .stApp {{ background-color: #0E1117; color: white; }}
     
-    /* FIX: Completely remove the "Press Enter" overlap from Password fields */
+    /* FIX: Removes "Press Enter" instruction to clear the Eye Icon path */
     div[data-testid="stTextInput"] div[data-testid="InputInstructions"] {{
         display: none !important;
     }}
     
-    /* FIX: Ensure the Eye Icon is large and clickable */
+    /* FIX: Centers the Green Eye Icon vertically */
     div[data-testid="stTextInput"] button {{
         color: #00FF00 !important;
+        margin-bottom: 5px;
     }}
     
-    /* Vertical Symmetry for 'Add Skill' Button */
+    /* FIX: Vertical Symmetry for Step 1 'Add Skill' Button */
     div.stButton > button {{
         margin-top: 28px !important;
         height: 42px;
+        width: 100%;
     }}
     
-    /* Static Footer */
+    /* Static Footer Styling */
     .footer-text {{
         position: fixed;
         bottom: 0;
@@ -40,6 +42,7 @@ st.markdown(f"""
         padding: 10px 0;
         background-color: #0E1117;
         z-index: 999;
+        border-top: 1px solid #333;
     }}
     </style>
     """, unsafe_allow_html=True)
@@ -62,7 +65,7 @@ if not st.session_state.auth:
     st.markdown(f"<div class='footer-text'>{COPYRIGHT} | v{VERSION}</div>", unsafe_allow_html=True)
     st.stop()
 
-# --- MAIN APP (v4.4.0) ---
+# --- MAIN APP BODY ---
 st.title(f"🏗️ {APP_NAME} | v{VERSION}")
 
 # STEP 1: PERSONAL & SKILLS
@@ -74,23 +77,20 @@ if st.session_state.step == 1:
         st.session_state.data['mobile'] = st.text_input("Mobile Number", st.session_state.data['mobile'])
         st.session_state.data['email'] = st.text_input("Email Address", st.session_state.data['email'])
     with c2:
-        # Professional Summary box height tuned for symmetry
         st.session_state.data['summary'] = st.text_area("Professional Summary", st.session_state.data['summary'], height=230)
     
     st.divider()
     
-    # TERMINOLOGY SYNC: Key Skills / Core Competencies (10 Recommended)
+    # Header terminology and auto-clear logic
     k = len(st.session_state.data['skills']) + 1
     st.subheader(f"Step 2: Key Skills / Core Competencies (10 Recommended)")
     col_s1, col_s2 = st.columns([4, 1])
     
-    # Auto-clearing input field logic
     s_in = col_s1.text_input(f"Enter Skill {k}...", key=f"skill_box_{k}")
     
-    if col_s2.button("➕ Add Skill") or (s_in and s_in != st.session_state.get('last_skill')):
+    if col_s2.button("➕ Add Skill"):
         if s_in:
             st.session_state.data['skills'].append(s_in)
-            st.session_state.last_skill = s_in
             st.rerun()
             
     if st.session_state.data['skills']:
@@ -100,5 +100,27 @@ if st.session_state.step == 1:
     
     if st.button("Continue to Employment History ➡️"): 
         st.session_state.step = 2; st.rerun()
+
+# STEP 2: EMPLOYMENT HISTORY
+elif st.session_state.step == 2:
+    st.header("Step 4: Employment History")
+    with st.form("job_form", clear_on_submit=True):
+        cA, cB = st.columns(2)
+        comp = cA.text_input("Company Name")
+        title = cB.text_input("Job Title")
+        resp = st.text_area("Responsibilities & Achievements")
+        d1, d2 = st.columns(2)
+        start = d1.date_input("Start Date")
+        end = d2.date_input("End Date")
+        if st.form_submit_button("➕ Save Work Experience"):
+            new_job = {"comp": comp, "role": title, "resp": resp, "period": f"{start.strftime('%b %Y')} - {end.strftime('%b %Y')}", "sort": start.toordinal()}
+            st.session_state.data['history'].append(new_job)
+            st.session_state.data['history'] = sorted(st.session_state.data['history'], key=lambda x: x['sort'], reverse=True)
+            st.rerun()
+    
+    for j in st.session_state.data['history']:
+        st.success(f"**{j['role']}** at {j['comp']} ({j['period']})")
+    
+    if st.button("⬅️ Back"): st.session_state.step = 1; st.rerun()
 
 st.markdown(f"<div class='footer-text'>{COPYRIGHT} | v{VERSION}</div>", unsafe_allow_html=True)
