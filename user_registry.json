@@ -1,0 +1,8 @@
+{
+    "aash": {
+        "password": "admin",
+        "tier": "Admin",
+        "uses": 999,
+        "expiry": "2099-12-31"
+    }
+}
