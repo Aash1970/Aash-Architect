@@ -1,3 +1,10 @@
+# ==========================================
+# PROJECT: CAREER ARCHITECT BY AASH
+# VERSION: v4.9.0 (MASTER RELEASE)
+# AUTHOR: AASH HINDOCHA
+# LAST UPDATED: 2026-02-15
+# ==========================================
+
 import streamlit as st
 import json
 import os
@@ -30,14 +37,13 @@ st.markdown("""
 
 # --- 3. DATABASE (REGISTRY) FUNCTIONS ---
 def load_registry():
-    # Loads the user list and permissions from our JSON 'locked' file
     if os.path.exists('user_registry.json'):
         with open('user_registry.json', 'r') as f:
             return json.load(f)
+    # Default fallback
     return {"aash": {"password": "admin", "tier": "Admin", "uses": 999, "expiry": "2099-12-31"}}
 
 def save_registry(data):
-    # Saves updates to GitHub/Streamlit environment
     with open('user_registry.json', 'w') as f:
         json.dump(data, f, indent=4)
 
@@ -49,14 +55,12 @@ class CareerArchitectPDF(FPDF):
         self.cell(0, 10, 'Career Architect Secure Portal - Proprietary Content', 0, 1, 'C')
 
     def footer(self):
-        # Micro-Footer branding
         self.set_y(-15)
         self.set_font('Arial', 'I', 6)
         self.set_text_color(180, 180, 180)
         self.cell(0, 10, 'Optimized by The Career Architect | © 2026 Aash Hindocha', 0, 0, 'C')
 
     def draw_watermark(self):
-        # Stealth Watermark logic
         self.set_font('Arial', 'B', 50)
         self.set_text_color(200, 200, 200)
         with self.local_context(fill_opacity=0.1): 
@@ -74,12 +78,12 @@ def main():
     if not st.session_state.logged_in:
         # --- LOGIN SCREEN ---
         st.title("Career Architect Secure Portal")
+        st.subheader("Version 4.9.0")
         user = st.text_input("Username")
         pw = st.text_input("Password", type="password")
         
         if st.button("Login"):
             if user in registry and registry[user]['password'] == pw:
-                # The Lease Gate check
                 expiry = datetime.strptime(registry[user]['expiry'], '%Y-%m-%d')
                 if datetime.now() > expiry:
                     st.error("Account Lease Expired. Contact aash1970@gmail.com")
@@ -123,7 +127,6 @@ def main():
                 st.subheader("Update Uses or Reset Passwords")
                 target = st.selectbox("Select User to Modify", list(registry.keys()))
                 
-                # Use Management Grid
                 c1, c2 = st.columns(2)
                 if c1.button("+25 Uses"): 
                     registry[target]['uses'] += 25
@@ -134,7 +137,6 @@ def main():
                     save_registry(registry)
                     st.rerun()
                 
-                # Password Reset (for forgotten credentials)
                 reset_p = st.text_input(f"New Password for {target}", type="password")
                 if st.button("Confirm Reset"):
                     if reset_p: 
@@ -156,15 +158,14 @@ def main():
         st.divider()
         st.header("Resilience Strategy Builder")
         gaps = st.multiselect("Life-Gap Matrix", ["Health", "Bereavement", "Redundancy", "Break"])
-        achieve = st.text_area("Key Achievements (One per line)")
-        resp = st.text_area("Key Responsibilities (One per line)")
+        achieve = st.text_area("Key Achievements")
+        resp = st.text_area("Key Responsibilities")
         
         if st.button("Generate & Download Draft"):
             if registry[st.session_state.user]['uses'] > 0:
                 registry[st.session_state.user]['uses'] -= 1
                 save_registry(registry)
                 
-                # PDF Creation with Stealth Branding & Watermark
                 pdf = CareerArchitectPDF()
                 pdf.add_page()
                 pdf.set_author("Aash Hindocha")
