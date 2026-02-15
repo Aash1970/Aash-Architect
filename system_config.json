@@ -1,0 +1,21 @@
+{
+    "admin_settings": {
+        "admin_hash": "c7ad4411ac76b744d9365c71d605058866196236688d617c0a875a55745d65457f62",
+        "branding": {
+            "primary_color": "#1E3A8A",
+            "accent_color": "#008080",
+            "logo_scale": 1.0,
+            "eye_padding": "50px"
+        },
+        "api_keys": {
+            "adzuna_id": "REPLACE_WITH_YOUR_ID",
+            "adzuna_key": "REPLACE_WITH_YOUR_KEY",
+            "whatsapp_token": "PENDING_PHASE_4"
+        }
+    },
+    "system_info": {
+        "version": "5.2.0",
+        "last_update": "2026-02-15",
+        "manifest_compliance": "V5.1"
+    }
+}
