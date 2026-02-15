@@ -1,51 +1,54 @@
 """
 PROJECT: Aash Career Architect
-VERSION: 5.2.0-STABLE (PHASE 3: UI LAYER)
+VERSION: 5.4.0-STABLE (PHASE 5: UI EXPORT)
 RELEASE DATE: 2026-02-15
 """
 
 import streamlit as st
 from architect_core import ArchitectCore
+import os
 
 core = ArchitectCore()
-
-# Manifest Item 8: Branding - Solid Royal Blue Protocol
 st.set_page_config(page_title=f"Aash Career Architect {core.version}", layout="wide")
 
 st.markdown(f"""
     <style>
     .stApp {{ background-color: #1E3A8A; color: white; }}
     .stButton>button {{ background-color: #008080 !important; color: white !important; }}
-    .version-tag {{ position: fixed; bottom: 10px; right: 10px; font-size: 0.8em; color: rgba(255,255,255,0.5); }}
     </style>
-    <div class="version-tag">Build v{core.version}</div>
     """, unsafe_allow_html=True)
 
 st.title("Aash Career Architect")
 
-# SIDEBAR: ADMIN GATEWAY & LOGO CONTROL
 with st.sidebar:
-    st.header("Security & Branding")
-    logo_size = st.slider("Logo Scale (Manifest Item 4)", 0.5, 2.0, 1.0)
-    st.image("https://via.placeholder.com/150", width=int(150 * logo_size))
-    
+    st.header("Admin Portal")
     user_pass = st.text_input("Admin Password", type="password")
     unlocked = st.button("Unlock System")
 
 if unlocked:
-    st.success(core.run_purge_audit())
+    tab1, tab2, tab3 = st.tabs(["Job Search", "CV Architect", "Recovery (CARF)"])
     
-    # PHASE 3: THE AASH SAUCE INTERFACE
-    st.header("Live Job Intelligence (Adzuna)")
-    col1, col2 = st.columns(2)
-    with col1:
-        job_title = st.text_input("Job Title", value="Software Engineer")
-    with col2:
-        location = st.text_input("Location", value="London")
-        
-    if st.button("Search Live Jobs"):
-        jobs = core.fetch_adzuna_jobs(job_title, location)
-        for job in jobs[:5]: # Show top 5
-            with st.expander(f"{job['title']} - {job['company']['display_name']}"):
-                st.write(job['description'])
-                st.info(f"Salary: {job.get('salary_min', 'N/A')} | Location: {job['location']['display_name']}")
+    with tab1:
+        st.header("Job Intelligence")
+        job_title = st.text_input("Title")
+        if st.button("Search"):
+            jobs = core.fetch_adzuna_jobs(job_title)
+            for j in jobs[:3]: st.write(f"**{j['title']}**")
+
+    with tab2:
+        st.header("Finalize & Export")
+        c_name = st.text_input("Client Name")
+        c_cv = st.text_area("CV Content")
+        if st.button("Generate ZIP Bundle"):
+            zip_file = core.create_zip_bundle(c_name, c_cv)
+            with open(zip_file, "rb") as f:
+                st.download_button("Download ZIP (PDF + .CARF)", f, file_name=zip_file)
+            st.warning("Manifest Item 7: This data will be purged from the system in 30 days. Save the .CARF file safely.")
+
+    with tab3:
+        st.header("Returning Client Recovery")
+        uploaded_file = st.file_uploader("Upload .CARF File", type=["carf"])
+        if uploaded_file:
+            data = uploaded_file.read().decode("utf-8")
+            st.success("Client Data Recovered. Resuming Architect...")
+            st.json(data)
