@@ -1,182 +1,51 @@
-# ==========================================
-# PROJECT: CAREER ARCHITECT BY AASH
-# VERSION: v4.9.0 (MASTER RELEASE)
-# AUTHOR: AASH HINDOCHA
-# LAST UPDATED: 2026-02-15
-# ==========================================
+"""
+PROJECT: Aash Career Architect
+VERSION: 5.2.0-STABLE (PHASE 3: UI LAYER)
+RELEASE DATE: 2026-02-15
+"""
 
 import streamlit as st
-import json
-import os
-from datetime import datetime
-from fpdf import FPDF
+from architect_core import ArchitectCore
 
-# --- 1. PAGE INITIALIZATION ---
-st.set_page_config(page_title="Career Architect By Aash", layout="wide")
+core = ArchitectCore()
 
-# --- 2. THE BRANDING STYLESHEET (WITH EYE-ICON FIX) ---
-st.markdown("""
+# Manifest Item 8: Branding - Solid Royal Blue Protocol
+st.set_page_config(page_title=f"Aash Career Architect {core.version}", layout="wide")
+
+st.markdown(f"""
     <style>
-    /* Dark Mode Theme */
-    .main { background-color: #0E1117; color: white; }
-    
-    /* THE FIX: Prevents text from overlapping the 'eye' icon in password fields */
-    input[type="password"] {
-        padding-right: 50px !important;
-    }
-    
-    /* Standardized Buttons */
-    .stButton>button { 
-        background-color: #00d1b2; 
-        color: black; 
-        border-radius: 5px; 
-        font-weight: bold; 
-    }
+    .stApp {{ background-color: #1E3A8A; color: white; }}
+    .stButton>button {{ background-color: #008080 !important; color: white !important; }}
+    .version-tag {{ position: fixed; bottom: 10px; right: 10px; font-size: 0.8em; color: rgba(255,255,255,0.5); }}
     </style>
+    <div class="version-tag">Build v{core.version}</div>
     """, unsafe_allow_html=True)
 
-# --- 3. DATABASE (REGISTRY) FUNCTIONS ---
-def load_registry():
-    if os.path.exists('user_registry.json'):
-        with open('user_registry.json', 'r') as f:
-            return json.load(f)
-    # Default fallback
-    return {"aash": {"password": "admin", "tier": "Admin", "uses": 999, "expiry": "2099-12-31"}}
+st.title("Aash Career Architect")
 
-def save_registry(data):
-    with open('user_registry.json', 'w') as f:
-        json.dump(data, f, indent=4)
-
-# --- 4. THE PDF GENERATOR ENGINE ---
-class CareerArchitectPDF(FPDF):
-    def header(self):
-        self.set_font('Arial', 'B', 8)
-        self.set_text_color(150, 150, 150)
-        self.cell(0, 10, 'Career Architect Secure Portal - Proprietary Content', 0, 1, 'C')
-
-    def footer(self):
-        self.set_y(-15)
-        self.set_font('Arial', 'I', 6)
-        self.set_text_color(180, 180, 180)
-        self.cell(0, 10, 'Optimized by The Career Architect | © 2026 Aash Hindocha', 0, 0, 'C')
-
-    def draw_watermark(self):
-        self.set_font('Arial', 'B', 50)
-        self.set_text_color(200, 200, 200)
-        with self.local_context(fill_opacity=0.1): 
-            self.rotate(45, 105, 148)
-            self.text(35, 190, "DRAFT - CAREER ARCHITECT")
-            self.rotate(0)
-
-# --- 5. THE MAIN APPLICATION ---
-def main():
-    registry = load_registry()
+# SIDEBAR: ADMIN GATEWAY & LOGO CONTROL
+with st.sidebar:
+    st.header("Security & Branding")
+    logo_size = st.slider("Logo Scale (Manifest Item 4)", 0.5, 2.0, 1.0)
+    st.image("https://via.placeholder.com/150", width=int(150 * logo_size))
     
-    if 'logged_in' not in st.session_state:
-        st.session_state.logged_in = False
+    user_pass = st.text_input("Admin Password", type="password")
+    unlocked = st.button("Unlock System")
 
-    if not st.session_state.logged_in:
-        # --- LOGIN SCREEN ---
-        st.title("Career Architect Secure Portal")
-        st.subheader("Version 4.9.0")
-        user = st.text_input("Username")
-        pw = st.text_input("Password", type="password")
+if unlocked:
+    st.success(core.run_purge_audit())
+    
+    # PHASE 3: THE AASH SAUCE INTERFACE
+    st.header("Live Job Intelligence (Adzuna)")
+    col1, col2 = st.columns(2)
+    with col1:
+        job_title = st.text_input("Job Title", value="Software Engineer")
+    with col2:
+        location = st.text_input("Location", value="London")
         
-        if st.button("Login"):
-            if user in registry and registry[user]['password'] == pw:
-                expiry = datetime.strptime(registry[user]['expiry'], '%Y-%m-%d')
-                if datetime.now() > expiry:
-                    st.error("Account Lease Expired. Contact aash1970@gmail.com")
-                else:
-                    st.session_state.logged_in = True
-                    st.session_state.user = user
-                    st.session_state.tier = registry[user]['tier']
-                    st.rerun()
-            else:
-                st.error("Access Denied.")
-
-    else:
-        # --- LOGGED IN DASHBOARD ---
-        st.sidebar.title(f"User: {st.session_state.user}")
-        st.sidebar.write(f"Level: {st.session_state.tier}")
-        st.sidebar.write(f"Uses Remaining: {registry[st.session_state.user]['uses']}")
-        
-        if st.sidebar.button("Logout"):
-            st.session_state.logged_in = False
-            st.rerun()
-
-        # --- ADMIN COMMAND CENTER ---
-        if st.session_state.tier == "Admin":
-            st.header("Admin Command Center")
-            
-            admin_tab1, admin_tab2, admin_tab3 = st.tabs(["Create New User", "Manage Existing", "System Security"])
-            
-            with admin_tab1:
-                st.subheader("Add a New Client/Supervisor")
-                new_u = st.text_input("New Username")
-                new_p = st.text_input("New Password", type="password", key="new_u_pass")
-                new_t = st.selectbox("Tier", ["User", "Supervisor"])
-                new_e = st.date_input("Lease Expiry", datetime(2026, 12, 31))
-                if st.button("Register User"):
-                    if new_u and new_p:
-                        registry[new_u] = {"password": new_p, "tier": new_t, "uses": 5, "expiry": str(new_e)}
-                        save_registry(registry)
-                        st.success(f"User {new_u} created!")
-            
-            with admin_tab2:
-                st.subheader("Update Uses or Reset Passwords")
-                target = st.selectbox("Select User to Modify", list(registry.keys()))
-                
-                c1, c2 = st.columns(2)
-                if c1.button("+25 Uses"): 
-                    registry[target]['uses'] += 25
-                    save_registry(registry)
-                    st.rerun()
-                if c2.button("+100 Uses"): 
-                    registry[target]['uses'] += 100
-                    save_registry(registry)
-                    st.rerun()
-                
-                reset_p = st.text_input(f"New Password for {target}", type="password")
-                if st.button("Confirm Reset"):
-                    if reset_p: 
-                        registry[target]['password'] = reset_p
-                        save_registry(registry)
-                        st.success(f"Password for {target} updated.")
-
-            with admin_tab3:
-                st.subheader("Master Admin Security")
-                st.write("Current Admin Username: aash")
-                new_admin_p = st.text_input("New Admin Password", type="password")
-                if st.button("Confirm Password Change"):
-                    if new_admin_p:
-                        registry['aash']['password'] = new_admin_p
-                        save_registry(registry)
-                        st.success("Admin password updated successfully.")
-
-        # --- USER WORKSPACE ---
-        st.divider()
-        st.header("Resilience Strategy Builder")
-        gaps = st.multiselect("Life-Gap Matrix", ["Health", "Bereavement", "Redundancy", "Break"])
-        achieve = st.text_area("Key Achievements")
-        resp = st.text_area("Key Responsibilities")
-        
-        if st.button("Generate & Download Draft"):
-            if registry[st.session_state.user]['uses'] > 0:
-                registry[st.session_state.user]['uses'] -= 1
-                save_registry(registry)
-                
-                pdf = CareerArchitectPDF()
-                pdf.add_page()
-                pdf.set_author("Aash Hindocha")
-                pdf.draw_watermark()
-                pdf.set_font("Arial", size=12)
-                pdf.multi_cell(0, 10, f"Achievements:\n{achieve}\n\nResponsibilities:\n{resp}")
-                
-                pdf_bytes = pdf.output(dest='S').encode('latin-1')
-                st.download_button("Download Watermarked DRAFT", data=pdf_bytes, file_name="Draft_CV.pdf")
-            else:
-                st.error("No Uses remaining.")
-
-if __name__ == "__main__":
-    main()
+    if st.button("Search Live Jobs"):
+        jobs = core.fetch_adzuna_jobs(job_title, location)
+        for job in jobs[:5]: # Show top 5
+            with st.expander(f"{job['title']} - {job['company']['display_name']}"):
+                st.write(job['description'])
+                st.info(f"Salary: {job.get('salary_min', 'N/A')} | Location: {job['location']['display_name']}")
