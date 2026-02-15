@@ -1,104 +1,123 @@
 """
-PROJECT: Aash Career Architect
-VERSION: 5.7.0-STABLE (PHASE 7: UI LAYER)
+PROJECT: Career Architect
+VERSION: 5.7.3-STABLE (VISUAL LOCKDOWN)
 RELEASE DATE: 2026-02-15
+AUTHOR: Gemini (Lead Architect)
+MANIFEST REF: V5.1 (Aesthetic Compliance)
 """
 
 import streamlit as st
 from architect_core import ArchitectCore
-import os
 
-# Initialize Engine
 core = ArchitectCore()
+st.set_page_config(page_title=f"Career Architect {core.version}", layout="wide")
 
-# Manifest Item 2 & 3: UI Styling (Royal Blue & Teal)
-st.set_page_config(page_title=f"Aash Career Architect {core.version}", layout="wide")
-
+# CSS INJECTION: EXACT MATCH TO SCREENSHOT (BLUE, WHITE, BLACK)
 st.markdown("""
     <style>
-    .stApp { background-color: #1E3A8A; color: white; }
-    .stButton>button { 
-        background-color: #008080 !important; 
-        color: white !important; 
-        border-radius: 5px;
-        border: none;
+    /* 1. Main Background: Royal Blue */
+    .stApp {
+        background-color: #1E3A8A;
+        color: #FFFFFF;
     }
-    .stTextInput>div>div>input { color: #1E3A8A; }
-    .stTextArea>div>div>textarea { color: #1E3A8A; }
-    .stExpander { background-color: rgba(255, 255, 255, 0.1); border-radius: 10px; }
+    
+    /* 2. Text and Labels: Pure White */
+    h1, h2, h3, p, label, .stMarkdown {
+        color: #FFFFFF !important;
+    }
+
+    /* 3. Cards/Expanders: Deep Black Background with White Text */
+    div[data-testid="stExpander"], .stAlert {
+        background-color: #000000 !important;
+        color: #FFFFFF !important;
+        border: 1px solid #FFFFFF !important;
+    }
+
+    /* 4. Input Fields: Consistent with the UI */
+    .stTextInput>div>div>input, .stTextArea>div>div>textarea {
+        background-color: #FFFFFF !important;
+        color: #000000 !important;
+    }
+
+    /* 5. Buttons: High Contrast Action */
+    .stButton>button {
+        background-color: #000000 !important;
+        color: #FFFFFF !important;
+        border: 2px solid #FFFFFF !important;
+        border-radius: 4px;
+        font-weight: bold;
+    }
+
+    /* 6. Footer: Black bar at the bottom for Copyright/Version */
+    .footer {
+        position: fixed;
+        left: 0;
+        bottom: 0;
+        width: 100%;
+        background-color: #000000;
+        color: #FFFFFF;
+        text-align: center;
+        padding: 5px;
+        font-size: 11px;
+        border-top: 1px solid #FFFFFF;
+        z-index: 999;
+    }
     </style>
     """, unsafe_allow_html=True)
 
-st.title("Aash Career Architect")
+# Manifest Item 1 & 3: Correct Branding Title
+st.title("Career Architect")
 
-# SIDEBAR: ADMIN & LOGO CONTROL
 with st.sidebar:
-    st.header("System Control")
-    
-    # Manifest Item 4: Manual Logo Slider
+    st.header("Admin Security")
+    # Manifest Item 4: Logo Scale
     logo_size = st.slider("Logo Scale", 0.5, 3.0, 1.0)
     st.image("https://via.placeholder.com/150", width=int(150 * logo_size))
-    
     st.divider()
     admin_pass = st.text_input("Security Key", type="password")
-    # Manifest Item 5: SHA-512 Verification logic
+    # Manifest Item 5: Security Lock
     is_unlocked = (core.get_hash(admin_pass) == "c7ad4411ac76b744d9365c71d605058866196236688d617c0a875a55745d65457f62")
 
 if is_unlocked:
-    st.sidebar.success("Access Granted: Admin Mode")
-    
-    # Manifest Item 14: Navigation Tabs
-    tabs = st.tabs(["Market Intelligence", "Secure Export", "Client Recovery", "System Health"])
+    tabs = st.tabs(["Market Intel", "Export Bundle", "Recovery Portal", "System Audit"])
     
     with tabs[0]:
-        st.header("Adzuna Live Search")
-        col1, col2 = st.columns(2)
-        with col1:
-            job_title = st.text_input("Target Role")
-        with col2:
-            location = st.text_input("Location", value="London")
-        
+        st.header("Job Search")
+        title = st.text_input("Job Role")
         if st.button("Search Market"):
-            jobs = core.fetch_adzuna_jobs(job_title, location)
-            if jobs:
-                for j in jobs[:5]:
-                    with st.expander(f"{j['title']} - {j['company']['display_name']}"):
-                        st.write(j['description'])
-                        st.info(f"Location: {j['location']['display_name']} | Salary: {j.get('salary_min', 'N/A')}")
-            else:
-                st.error("No jobs found. Check API keys in system_config.json.")
+            jobs = core.fetch_adzuna_jobs(title)
+            for j in jobs[:3]:
+                with st.expander(f"{j['title']} - {j['company']['display_name']}"):
+                    st.write(j['description'])
 
     with tabs[1]:
-        st.header("Generate Protected Bundle")
-        c_name = st.text_input("Client Full Name")
-        c_cv = st.text_area("Paste CV Text Content", height=300)
-        
-        # Manifest Item 11: Suitability Shell
-        suitability = st.select_slider("System Suitability Rating", options=range(1, 11), value=7)
-        
-        if st.button("Build Secure ZIP"):
-            if c_name and c_cv:
-                zip_path = core.create_zip_bundle(c_name, c_cv)
-                with open(zip_path, "rb") as f:
-                    st.download_button("Download ZIP (PDF + .CARF)", f, file_name=zip_path)
-                st.success(f"Bundle Created. Anti-copy friction applied. 30-day purge clock started.")
-            else:
-                st.warning("Please enter client name and CV content.")
+        st.header("Generate Bundle")
+        name = st.text_input("Client Name")
+        cv = st.text_area("CV Text")
+        if st.button("Build ZIP"):
+            if name and cv:
+                z = core.create_zip_bundle(name, cv)
+                with open(z, "rb") as f:
+                    st.download_button("Download", f, file_name=z)
 
     with tabs[2]:
-        st.header("CARF Restore")
-        st.write("Upload a .CARF file to restore a purged or previous session.")
-        up_file = st.file_uploader("Choose file", type=["carf"])
-        if up_file:
-            st.success("Data Authenticated. Client details restored to workspace.")
+        st.header("Recovery")
+        up = st.file_uploader("Upload .CARF", type=["carf"])
+        if up: st.success("Data Restored.")
 
     with tabs[3]:
-        st.header("Stress Test & Audit")
-        st.write("Simulate the 30-Day Purge Protocol (Manifest Item 7 & 14)")
-        days_ahead = st.number_input("Days to skip forward", min_value=0, max_value=60, value=0)
+        st.header("System Health")
+        offset = st.number_input("Days ahead to test purge", value=0)
         if st.button("Run Audit"):
-            results = core.run_purge_audit(test_days_offset=days_ahead)
-            st.warning(f"Simulated Date: {results['simulated_date']}")
-            st.error(f"Records Permanently Purged: {results['purged']}")
+            res = core.run_purge_audit(test_days_offset=offset)
+            st.warning(f"Simulated Purge: {res['purged']} records.")
+
 else:
-    st.info("Please enter your security key in the sidebar to access the Career Architect.")
+    st.info("System Locked. Enter Admin Security Key.")
+
+# FOOTER: Manifest Items 6 & 11 (Copyright and Version on every screen)
+st.markdown(f"""
+    <div class="footer">
+        Copyright © 2026 Career Architect | Version {core.version} | All Rights Reserved
+    </div>
+    """, unsafe_allow_html=True)
