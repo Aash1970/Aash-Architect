@@ -3,8 +3,7 @@ from datetime import datetime, timedelta
 
 class ArchitectCore:
     def __init__(self):
-        self.version = "5.7.5"
-        self.build_date = "2026-02-15"
+        self.version = "5.8.0"
         self.config_file = "system_config.json"
         self.registry_file = "client_registry.json"
 
@@ -36,14 +35,3 @@ class ArchitectCore:
             for root, dirs, files in os.walk(folder):
                 for file in files: zf.write(os.path.join(root, file), file)
         return z_path
-
-    def fetch_jobs(self, title, loc="London"):
-        if not os.path.exists(self.config_file): return []
-        with open(self.config_file, 'r') as f: cfg = json.load(f)
-        p = {"app_id": cfg['admin_settings']['api_keys']['adzuna_id'], 
-             "app_key": cfg['admin_settings']['api_keys']['adzuna_key'], 
-             "what": title, "where": loc}
-        try:
-            r = requests.get("https://api.adzuna.com/v1/api/jobs/gb/search/1", params=p)
-            return r.json().get('results', [])
-        except: return []
