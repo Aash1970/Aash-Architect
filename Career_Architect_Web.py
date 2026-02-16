@@ -22,6 +22,7 @@ st.markdown("<h1>Career Architect</h1>", unsafe_allow_html=True)
 with st.sidebar:
     st.markdown("<h3 style='color:white;'>System Access</h3>", unsafe_allow_html=True)
     pw = st.text_input("Enter Security Key", type="password")
+    # Verify via SHA-512
     auth = (core.get_hash(pw) == "c7ad4411ac76b744d9365c71d605058866196236688d617c0a875a55745d65457f62")
     if auth:
         st.success("Admin Verified")
@@ -31,7 +32,7 @@ with st.sidebar:
 if auth:
     t1, t2, t3, t4 = st.tabs(["Market Intel", "Export Bundle", "Client Recovery", "Stress Test"])
     with t1:
-        st.subheader("Live Job Search (Adzuna)")
+        st.subheader("Live Job Search")
         job = st.text_input("Job Role Title")
         if st.button("Execute Search"):
             results = core.fetch_jobs(job)
@@ -41,15 +42,15 @@ if auth:
     with t2:
         st.subheader("Secure Export")
         nm = st.text_input("Client Full Name")
-        cv = st.text_area("Paste CV Text Content", height=300)
+        cv = st.text_area("Paste CV Text", height=250)
         rating = st.select_slider("Suitability Rating", options=range(1, 11), value=7)
         if st.button("Generate Protected ZIP"):
             z = core.create_bundle(nm, cv)
             with open(z, "rb") as f: st.download_button("Download Secure ZIP", f, file_name=z)
     with t3:
-        st.subheader("Recovery Suite")
+        st.subheader("Recovery")
         up = st.file_uploader("Upload .CARF File", type=["carf"])
-        if up: st.success("Client Data Authenticated and Restored.")
+        if up: st.success("Client Data Restored.")
     with t4:
         st.subheader("Audit & Stress Test")
         off = st.number_input("Simulate Days Forward", 0, 60)
@@ -57,6 +58,6 @@ if auth:
             res = core.run_purge_audit(off)
             st.warning(f"Simulated Date: {res['date']} | Purged Records: {res['purged']}")
 else:
-    st.info("System Locked. Please authenticate via the sidebar to access the Architect.")
+    st.info("System Locked. Please authenticate via the sidebar.")
 
 st.markdown(f"<div class='footer'>Copyright © 2026 Career Architect | Version {core.version} | All Rights Reserved</div>", unsafe_allow_html=True)
