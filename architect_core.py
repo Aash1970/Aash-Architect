@@ -1,13 +1,10 @@
-# CAREER ARCHITECT CORE - VERSION 6.5.0
-# STATUS: AUDITED & SYNCHRONIZED
-# LOG: RESTORED HEADER & FRICTION MAPPING
-
+# VERSION: 7.0.0 | STATUS: CLAUDE-AUDITED | BRANDING: CAREER ARCHITECT
 import hashlib, json, os, requests, zipfile
 from datetime import datetime, timedelta
 
 class ArchitectCore:
     def __init__(self):
-        self.version = "6.5.0"
+        self.version = "7.0.0"
         self.config_file = "system_config.json"
         self.registry_file = "client_registry.json"
 
@@ -23,7 +20,6 @@ class ArchitectCore:
         return {"status": "Complete", "purged": len(clients) - len(keep), "date": now.strftime('%Y-%m-%d')}
 
     def apply_friction(self, text):
-        # AASH SAUCE: Subtle character swapping to prevent AI detection
         f_map = {"a": "а", "e": "е", "o": "о", "p": "р"}
         for eng, cyr in f_map.items(): text = text.replace(eng, cyr)
         return text
