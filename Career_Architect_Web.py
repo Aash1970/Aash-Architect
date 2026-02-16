@@ -1,17 +1,28 @@
-# VERSION 9.2.0 | CAREER ARCHITECT | STATUS: BULLETPROOF RECOVERY
+# VERSION 9.3.0 | CAREER ARCHITECT | STATUS: LAYOUT RECOVERY
 import streamlit as st
 import json
 
-# --- 1. THE UI FIX (SIDEBAR OVERLAP) ---
-st.set_page_config(page_title="Career Architect 9.2.0", layout="wide")
+# --- 1. BRUTE FORCE CSS FIX (ITEM 1.01) ---
+st.set_page_config(page_title="Career Architect 9.3.0", layout="wide")
 
 st.markdown("""
     <style>
-    /* Force sidebar width and prevent text overlap */
-    [data-testid="stSidebar"] { min-width: 420px !important; padding: 2rem 1rem !important; }
-    .stTextInput input { 
-        padding-right: 45px !important; 
-        border: 2px solid #39ff14 !important; 
+    /* 1. Force the sidebar to be much wider so labels can't overlap */
+    [data-testid="stSidebar"] {
+        min-width: 450px !important;
+        max-width: 450px !important;
+    }
+    
+    /* 2. Add massive spacing to the input field so text has room to breathe */
+    .stTextInput label {
+        font-size: 1.2rem !important;
+        margin-bottom: 10px !important;
+        display: block !important;
+    }
+    
+    /* 3. Fix the input box itself */
+    .stTextInput div[data-baseweb="input"] {
+        margin-right: 20px !important;
     }
     </style>
 """, unsafe_content_allowed=True)
@@ -24,40 +35,42 @@ st.title("Career Architect")
 # --- 2. THE SECURITY GATE ---
 with st.sidebar:
     st.header("🔐 System Access")
-    # Using a direct form to ensure the 'Unlock' button is the ONLY trigger
-    with st.form("auth_gate"):
+    st.write("---")
+    
+    # Simple, direct form
+    with st.form("gate"):
         key_input = st.text_input("Enter Master Key", type="password")
-        unlock_clicked = st.form_submit_button("UNLOCK SYSTEM")
+        # I have added clear instructions here to help
+        st.caption("Key is case-sensitive. Click button below to unlock.")
         
-        if unlock_clicked:
-            # DIRECT STRING CHECK: No hashing, no margin for error
+        if st.form_submit_button("UNLOCK SYSTEM"):
             if key_input == "AashArchitect2026!":
                 st.session_state.auth = True
                 st.success("VERIFIED")
             else:
-                st.error("ACCESS DENIED")
+                st.error("INVALID KEY")
 
 # --- 3. THE APP ENGINE ---
 if st.session_state.auth:
     t1, t2, t3 = st.tabs(["Market Intel", "Export Bundle", "Recovery"])
     
     with t1:
-        st.subheader("Live Market Search")
-        st.info("System Ready.")
+        st.subheader("Market Intel Search")
+        st.info("System Ready for Adzuna Query.")
         
     with t2:
         st.subheader("Friction Export")
         name = st.text_input("Client Name")
         if st.button("Generate"):
-            st.write(f"Generating bundle for {name}...")
+            st.write(f"Building bundle for {name}...")
 
     with t3:
         st.subheader("Client Recovery")
-        st.file_uploader("Upload .carf", type=["carf"])
+        st.file_uploader("Upload .carf file", type=["carf"])
 
 else:
-    st.warning("⚠️ SYSTEM LOCKED: Use the sidebar to authenticate.")
+    st.warning("⚠️ SYSTEM LOCKED: Please enter the key in the sidebar.")
 
 # --- 4. FOOTER ---
 st.markdown("---")
-st.write("Version 9.2.0 | © 2026 Career Architect")
+st.write("Version 9.3.0 | © 2026 Career Architect")
