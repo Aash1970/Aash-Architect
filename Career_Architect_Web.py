@@ -1,21 +1,18 @@
-# VERSION 9.1.0 | CAREER ARCHITECT | STATUS: DIRECT FIX
+# VERSION 9.2.0 | CAREER ARCHITECT | STATUS: BULLETPROOF RECOVERY
 import streamlit as st
-import hashlib
+import json
 
-# 1. SECURITY LOGIC
-def get_hash(text):
-    return hashlib.sha512(text.encode()).hexdigest()
+# --- 1. THE UI FIX (SIDEBAR OVERLAP) ---
+st.set_page_config(page_title="Career Architect 9.2.0", layout="wide")
 
-# This is the exact hash for 'AashArchitect2026!'
-MASTER_HASH = "c7ad4411ac76b744d9365c71d605058866196236688d617c0a875a55745d65457f62"
-
-st.set_page_config(page_title="Career Architect 9.1.0", layout="wide")
-
-# 2. AESTHETIC FIX: SIDEBAR OVERLAP (Item 1.03)
 st.markdown("""
     <style>
-    [data-testid="stSidebar"] { min-width: 400px !important; }
-    .stTextInput input { padding-right: 50px !important; }
+    /* Force sidebar width and prevent text overlap */
+    [data-testid="stSidebar"] { min-width: 420px !important; padding: 2rem 1rem !important; }
+    .stTextInput input { 
+        padding-right: 45px !important; 
+        border: 2px solid #39ff14 !important; 
+    }
     </style>
 """, unsafe_content_allowed=True)
 
@@ -24,30 +21,43 @@ if 'auth' not in st.session_state:
 
 st.title("Career Architect")
 
-# 3. SIDEBAR ACCESS
+# --- 2. THE SECURITY GATE ---
 with st.sidebar:
-    st.header("Security")
-    # We use a form to ensure the button click is registered correctly
-    with st.form("login_gate"):
-        pwd = st.text_input("Enter Master Key", type="password")
-        submit = st.form_submit_button("UNLOCK SYSTEM")
+    st.header("🔐 System Access")
+    # Using a direct form to ensure the 'Unlock' button is the ONLY trigger
+    with st.form("auth_gate"):
+        key_input = st.text_input("Enter Master Key", type="password")
+        unlock_clicked = st.form_submit_button("UNLOCK SYSTEM")
         
-        if submit:
-            if get_hash(pwd) == MASTER_HASH:
+        if unlock_clicked:
+            # DIRECT STRING CHECK: No hashing, no margin for error
+            if key_input == "AashArchitect2026!":
                 st.session_state.auth = True
                 st.success("VERIFIED")
             else:
-                st.error("INVALID KEY")
+                st.error("ACCESS DENIED")
 
-# 4. MAIN INTERFACE
+# --- 3. THE APP ENGINE ---
 if st.session_state.auth:
-    tabs = st.tabs(["Market Intel", "Export Bundle", "Recovery/Audit"])
-    with tabs[0]: st.write("Market Intel Active.")
-    with tabs[1]: st.write("Export Engine Active.")
-    with tabs[2]: st.write("Recovery/Audit Active.")
-else:
-    st.warning("Locked. Please use the sidebar to authenticate.")
+    t1, t2, t3 = st.tabs(["Market Intel", "Export Bundle", "Recovery"])
+    
+    with t1:
+        st.subheader("Live Market Search")
+        st.info("System Ready.")
+        
+    with t2:
+        st.subheader("Friction Export")
+        name = st.text_input("Client Name")
+        if st.button("Generate"):
+            st.write(f"Generating bundle for {name}...")
 
-# 5. FOOTER
+    with t3:
+        st.subheader("Client Recovery")
+        st.file_uploader("Upload .carf", type=["carf"])
+
+else:
+    st.warning("⚠️ SYSTEM LOCKED: Use the sidebar to authenticate.")
+
+# --- 4. FOOTER ---
 st.markdown("---")
-st.write(f"Version 9.1.0 | © 2026 Career Architect")
+st.write("Version 9.2.0 | © 2026 Career Architect")
