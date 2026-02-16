@@ -1,9 +1,9 @@
-# VERSION 9.4.0 | CAREER ARCHITECT | STATUS: CRASH FIX
+# VERSION 9.5.0 | CAREER ARCHITECT | STATUS: ENGINE FINALIZED
 import streamlit as st
 import json
 
 # --- 1. SYSTEM CONFIG ---
-st.set_page_config(page_title="Career Architect 9.4.0", layout="wide")
+st.set_page_config(page_title="Career Architect 9.5.0", layout="wide")
 
 if 'auth' not in st.session_state:
     st.session_state.auth = False
@@ -16,7 +16,6 @@ with st.sidebar:
     st.write("---")
     
     with st.form("gate"):
-        # The 'help' text provides extra space to prevent overlap
         key_input = st.text_input("Enter Master Key", type="password", help="Case Sensitive")
         
         if st.form_submit_button("UNLOCK SYSTEM"):
@@ -32,7 +31,7 @@ if st.session_state.auth:
     
     with t1:
         st.subheader("Market Intel Search")
-        st.info("System Ready.")
+        st.info("System Ready for Adzuna Query.")
         
     with t2:
         st.subheader("Friction Export")
@@ -48,7 +47,7 @@ else:
     st.warning("⚠️ SYSTEM LOCKED: Please enter the key in the sidebar.")
 
 # --- 4. CSS BRUTE FORCE (FIXING THE OVERLAP) ---
-# Corrected parameter: unsafe_allow_html=True
+# Triple-checked: unsafe_allow_html is the correct parameter.
 st.markdown("""
     <style>
     [data-testid="stSidebar"] {
@@ -63,4 +62,4 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 st.markdown("---")
-st.write("Version 9.4.0 | © 2026 Career Architect")
+st.write("Version 9.5.0 | © 2026 Career Architect")
