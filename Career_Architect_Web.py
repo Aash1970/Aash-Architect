@@ -1,42 +1,31 @@
-import streamlit as st
-from architect_core import ArchitectCore
-
-core = ArchitectCore()
-st.set_page_config(page_title="Career Architect", layout="wide")
-
+# REPLACE YOUR CURRENT CSS BLOCK WITH THIS:
 st.markdown("""
     <style>
-    [data-testid="stHeader"] { background-color: #0A192F; }
-    [data-testid="stSidebar"] { background-color: #0A192F; color: white; }
-    .stApp { background-color: #FFFFFF; color: #000000; }
-    h1, h2, h3, p, label, .stMarkdown { color: #000000 !important; }
-    .sidebar-text { color: #FFFFFF !important; }
-    .footer { position: fixed; left: 0; bottom: 0; width: 100%; background-color: #000000; color: #FFFFFF; text-align: center; padding: 10px; font-size: 12px; z-index: 999; }
+    /* 1. Fix the Header */
+    [data-testid="stHeader"] { background-color: #0A192F !important; }
+    h1 { color: #FFFFFF !important; background-color: #0A192F; padding: 20px; text-align: center; border-bottom: 2px solid #008080; }
+
+    /* 2. Fix the Sidebar (Navy background, WHITE text so you can see the input) */
+    [data-testid="stSidebar"] { background-color: #0A192F !important; }
+    [data-testid="stSidebar"] .stMarkdown p, [data-testid="stSidebar"] label { color: #FFFFFF !important; }
+    
+    /* 3. Fix the Input Box (White background, BLACK text inside) */
+    div[data-baseweb="input"] { background-color: #FFFFFF !important; border: 1px solid #008080 !important; }
+    input { color: #000000 !important; }
+
+    /* 4. Fix the Main Work Area (White background, BLACK text) */
+    .stApp { background-color: #FFFFFF; }
+    .stMarkdown p, h2, h3 { color: #000000 !important; }
+
+    /* 5. Fix the Button (Teal background, WHITE text, Black border) */
+    .stButton>button { 
+        background-color: #008080 !important; 
+        color: #FFFFFF !important; 
+        border: 2px solid #000000 !important;
+        font-weight: bold;
+    }
+    
+    /* 6. Fix the Mandatory Footer */
+    .footer { position: fixed; left: 0; bottom: 0; width: 100%; background-color: #000000; color: #FFFFFF; text-align: center; padding: 10px; border-top: 2px solid #008080; }
     </style>
     """, unsafe_allow_html=True)
-
-st.markdown("<h1 style='color:white; background-color:#0A192F; padding:15px;'>Career Architect</h1>", unsafe_allow_html=True)
-
-with st.sidebar:
-    st.markdown("<h2 class='sidebar-text'>System Access</h2>", unsafe_allow_html=True)
-    pw = st.text_input("Enter Security Key", type="password")
-    auth = (core.get_hash(pw) == "c7ad4411ac76b744d9365c71d605058866196236688d617c0a875a55745d65457f62")
-    if auth:
-        st.success("Admin Verified")
-        logo_sz = st.slider("Logo Scale", 0.5, 3.0, 1.0)
-        st.image("https://via.placeholder.com/150", width=int(150*logo_sz))
-
-if auth:
-    tabs = st.tabs(["Market Intel", "Export Bundle", "Recovery", "Audit"])
-    with tabs[1]:
-        st.subheader("Secure Client Export")
-        name = st.text_input("Client Name")
-        cv_text = st.text_area("CV Content", height=300)
-        rating = st.select_slider("Suitability", options=range(1, 11), value=8)
-        if st.button("Generate ZIP"):
-            path = core.create_bundle(name, cv_text)
-            with open(path, "rb") as f: st.download_button("Download Bundle", f, file_name=path)
-else:
-    st.info("Authentication Required.")
-
-st.markdown(f"<div class='footer'>Copyright © 2026 Career Architect | Version {core.version}</div>", unsafe_allow_html=True)
