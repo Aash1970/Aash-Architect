@@ -42,7 +42,7 @@ class ArchitectCore:
         with open(self.config_file, 'r') as f: cfg = json.load(f)
         p = {"app_id": cfg['admin_settings']['api_keys']['adzuna_id'], 
              "app_key": cfg['admin_settings']['api_keys']['adzuna_key'], 
-             "what": title, "where": loc, "content-type": "application/json"}
+             "what": title, "where": loc}
         try:
             r = requests.get("https://api.adzuna.com/v1/api/jobs/gb/search/1", params=p)
             return r.json().get('results', [])
