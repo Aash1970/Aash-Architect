@@ -1,53 +1,66 @@
-# VERSION 7.7.0 | CAREER ARCHITECT CORE | STATUS: FUNCTIONAL LOCK
+# VERSION 7.9.0 | CAREER ARCHITECT UI | STATUS: FORCED FORM LOCK
 # COPYRIGHT © 2026 ALL RIGHTS RESERVED
 
-import hashlib, json, os, requests, zipfile
-from datetime import datetime, timedelta
+import streamlit as st
+from architect_core import ArchitectCore
 
-class ArchitectCore:
-    def __init__(self):
-        self.version = "7.7.0"
-        self.config_file = "system_config.json"
-        self.registry_file = "user_registry.json"
-        self.load_config()
+core = ArchitectCore()
+st.set_page_config(page_title=f"Career Architect {core.version}")
 
-    def load_config(self):
-        with open(self.config_file, 'r') as f:
-            self.config = json.load(f)
+st.title("Career Architect")
 
-    def get_hash(self, text):
-        return hashlib.sha512(text.encode()).hexdigest()
+# Initialize authentication state
+if 'auth' not in st.session_state:
+    st.session_state.auth = False
 
-    def get_market_intel(self, keywords):
-        url = f"https://api.adzuna.com/v1/api/jobs/gb/search/1"
-        params = {
-            "app_id": self.config['admin_settings']['api_keys']['adzuna_id'],
-            "app_key": self.config['admin_settings']['api_keys']['adzuna_key'],
-            "results_per_page": 5,
-            "what": keywords,
-            "content-type": "application/json"
-        }
-        try:
-            r = requests.get(url, params=params)
-            return r.json().get('results', [])
-        except:
-            return []
+with st.sidebar:
+    st.header("System Access")
+    
+    # Using a Form to FORCE the button to work
+    with st.form("auth_form"):
+        key_input = st.text_input("Enter Security Key", type="password")
+        submit_button = st.form_submit_button("Unlock System")
+        
+        if submit_button:
+            # Matches hash for 'AashArchitect2026!'
+            if core.get_hash(key_input) == "c7ad4411ac76b744d9365c71d605058866196236688d617c0a875a55745d65457f62":
+                st.session_state.auth = True
+                st.success("AUTHENTICATED")
+            else:
+                st.error("Invalid Key")
 
-    def apply_friction(self, text):
-        mapping = {"a": "а", "e": "е", "o": "о", "p": "р"}
-        for eng, cyr in mapping.items():
-            text = text.replace(eng, cyr)
-        return text
+if st.session_state.auth:
+    t1, t2, t3 = st.tabs(["Market Intel", "Export Bundle", "Audit"])
+    
+    with t1:
+        st.subheader("Adzuna Live Feed")
+        q = st.text_input("Job Keywords", value="Manager")
+        if st.button("Search Market"):
+            jobs = core.get_market_intel(q)
+            if not jobs:
+                st.warning("No results found or API error.")
+            for j in jobs:
+                st.markdown(f"**{j['title']}** ({j['location']['display_name']})")
+                st.write(f"[Link to Job]({j['redirect_url']})")
+                st.write("---")
 
-    def create_bundle(self, name, cv, rating):
-        folder = f"CA_{name.replace(' ', '_')}"
-        if not os.path.exists(folder): os.makedirs(folder)
-        with open(os.path.join(folder, "Protected_CV.txt"), "w", encoding="utf-8") as f:
-            f.write(f"CAREER ARCHITECT | RATING: {rating}/10\n\n" + self.apply_friction(cv))
-        with open(os.path.join(folder, "data.carf"), "w") as f:
-            json.dump({"name": name, "cv": cv, "rating": rating, "v": self.version}, f)
-        z_name = f"{folder}.zip"
-        with zipfile.ZipFile(z_name, 'w') as zf:
-            for root, _, files in os.walk(folder):
-                for file in files: zf.write(os.path.join(root, file), file)
-        return z_name
+    with t2:
+        st.subheader("Export Client Bundle")
+        c_name = st.text_input("Client Name")
+        c_cv = st.text_area("Paste CV")
+        c_rate = st.select_slider("Suitability", options=range(1, 11), value=7)
+        if st.button("Generate ZIP"):
+            if c_name and c_cv:
+                p = core.create_bundle(c_name, c_cv, c_rate)
+                with open(p, "rb") as f:
+                    st.download_button("Download ZIP", f, file_name=p)
+    
+    if st.button("Log Out"):
+        st.session_state.auth = False
+        st.rerun()
+else:
+    st.warning("SYSTEM LOCKED: Please enter the key in the sidebar and click 'Unlock System'.")
+
+# MANDATORY VERSIONED FOOTER
+st.markdown("---")
+st.write(f"Copyright © 2026 Career Architect | Version {core.version} | ACCESS RESTRICTED")
