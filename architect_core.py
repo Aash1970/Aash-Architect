@@ -1,9 +1,13 @@
+# CAREER ARCHITECT CORE - VERSION 6.5.0
+# STATUS: AUDITED & SYNCHRONIZED
+# LOG: RESTORED HEADER & FRICTION MAPPING
+
 import hashlib, json, os, requests, zipfile
 from datetime import datetime, timedelta
 
 class ArchitectCore:
     def __init__(self):
-        self.version = "6.1.0"
+        self.version = "6.5.0"
         self.config_file = "system_config.json"
         self.registry_file = "client_registry.json"
 
@@ -13,12 +17,13 @@ class ArchitectCore:
     def run_purge_audit(self, test_days_offset=0):
         if not os.path.exists(self.registry_file): return {"status": "Complete", "purged": 0}
         with open(self.registry_file, 'r') as f: clients = json.load(f)
-        sim_now = datetime.now() + timedelta(days=test_days_offset)
-        keep = [c for c in clients if sim_now <= datetime.strptime(c['last_unlock'], '%Y-%m-%d') + timedelta(days=30)]
+        now = datetime.now() + timedelta(days=test_days_offset)
+        keep = [c for c in clients if now <= datetime.strptime(c['last_unlock'], '%Y-%m-%d') + timedelta(days=30)]
         with open(self.registry_file, 'w') as f: json.dump(keep, f, indent=4)
-        return {"status": "Complete", "purged": len(clients) - len(keep), "date": sim_now.strftime('%Y-%m-%d')}
+        return {"status": "Complete", "purged": len(clients) - len(keep), "date": now.strftime('%Y-%m-%d')}
 
     def apply_friction(self, text):
+        # AASH SAUCE: Subtle character swapping to prevent AI detection
         f_map = {"a": "а", "e": "е", "o": "о", "p": "р"}
         for eng, cyr in f_map.items(): text = text.replace(eng, cyr)
         return text
