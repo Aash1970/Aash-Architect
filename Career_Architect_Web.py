@@ -1,31 +1,9 @@
-# VERSION 9.3.0 | CAREER ARCHITECT | STATUS: LAYOUT RECOVERY
+# VERSION 9.4.0 | CAREER ARCHITECT | STATUS: CRASH FIX
 import streamlit as st
 import json
 
-# --- 1. BRUTE FORCE CSS FIX (ITEM 1.01) ---
-st.set_page_config(page_title="Career Architect 9.3.0", layout="wide")
-
-st.markdown("""
-    <style>
-    /* 1. Force the sidebar to be much wider so labels can't overlap */
-    [data-testid="stSidebar"] {
-        min-width: 450px !important;
-        max-width: 450px !important;
-    }
-    
-    /* 2. Add massive spacing to the input field so text has room to breathe */
-    .stTextInput label {
-        font-size: 1.2rem !important;
-        margin-bottom: 10px !important;
-        display: block !important;
-    }
-    
-    /* 3. Fix the input box itself */
-    .stTextInput div[data-baseweb="input"] {
-        margin-right: 20px !important;
-    }
-    </style>
-""", unsafe_content_allowed=True)
+# --- 1. SYSTEM CONFIG ---
+st.set_page_config(page_title="Career Architect 9.4.0", layout="wide")
 
 if 'auth' not in st.session_state:
     st.session_state.auth = False
@@ -37,11 +15,9 @@ with st.sidebar:
     st.header("🔐 System Access")
     st.write("---")
     
-    # Simple, direct form
     with st.form("gate"):
-        key_input = st.text_input("Enter Master Key", type="password")
-        # I have added clear instructions here to help
-        st.caption("Key is case-sensitive. Click button below to unlock.")
+        # The 'help' text provides extra space to prevent overlap
+        key_input = st.text_input("Enter Master Key", type="password", help="Case Sensitive")
         
         if st.form_submit_button("UNLOCK SYSTEM"):
             if key_input == "AashArchitect2026!":
@@ -56,7 +32,7 @@ if st.session_state.auth:
     
     with t1:
         st.subheader("Market Intel Search")
-        st.info("System Ready for Adzuna Query.")
+        st.info("System Ready.")
         
     with t2:
         st.subheader("Friction Export")
@@ -71,6 +47,20 @@ if st.session_state.auth:
 else:
     st.warning("⚠️ SYSTEM LOCKED: Please enter the key in the sidebar.")
 
-# --- 4. FOOTER ---
+# --- 4. CSS BRUTE FORCE (FIXING THE OVERLAP) ---
+# Corrected parameter: unsafe_allow_html=True
+st.markdown("""
+    <style>
+    [data-testid="stSidebar"] {
+        min-width: 450px !important;
+        max-width: 450px !important;
+    }
+    .stTextInput label {
+        font-size: 1.2rem !important;
+        margin-bottom: 8px !important;
+    }
+    </style>
+""", unsafe_allow_html=True)
+
 st.markdown("---")
-st.write("Version 9.3.0 | © 2026 Career Architect")
+st.write("Version 9.4.0 | © 2026 Career Architect")
