@@ -1,12 +1,14 @@
-# VERSION 7.6.0 | CAREER ARCHITECT CORE | STATUS: FUNCTIONAL LOCK
+# VERSION 7.7.0 | CAREER ARCHITECT CORE | STATUS: FUNCTIONAL LOCK
+# COPYRIGHT © 2026 ALL RIGHTS RESERVED
+
 import hashlib, json, os, requests, zipfile
 from datetime import datetime, timedelta
 
 class ArchitectCore:
     def __init__(self):
-        self.version = "7.6.0"
+        self.version = "7.7.0"
         self.config_file = "system_config.json"
-        self.registry_file = "user_registry.json" # LINKED TO YOUR UPLOADED FILE
+        self.registry_file = "user_registry.json"
         self.load_config()
 
     def load_config(self):
@@ -17,7 +19,6 @@ class ArchitectCore:
         return hashlib.sha512(text.encode()).hexdigest()
 
     def get_market_intel(self, keywords):
-        # ADZUNA API - DATA PULLED FROM CONFIG
         url = f"https://api.adzuna.com/v1/api/jobs/gb/search/1"
         params = {
             "app_id": self.config['admin_settings']['api_keys']['adzuna_id'],
@@ -29,17 +30,8 @@ class ArchitectCore:
         try:
             r = requests.get(url, params=params)
             return r.json().get('results', [])
-        except Exception as e:
-            return [{"title": "API Error", "location": {"display_name": str(e)}, "redirect_url": "#"}]
-
-    def run_purge_audit(self):
-        # 30-DAY AUTO-PURGE LOGIC
-        if not os.path.exists(self.registry_file): return 0
-        with open(self.registry_file, 'r') as f:
-            data = json.load(f)
-        
-        # Note: Your user_registry is a dict, we will keep the 'aash' admin always.
-        return "System Clean: Admin persistent."
+        except:
+            return []
 
     def apply_friction(self, text):
         mapping = {"a": "а", "e": "е", "o": "о", "p": "р"}
@@ -50,14 +42,10 @@ class ArchitectCore:
     def create_bundle(self, name, cv, rating):
         folder = f"CA_{name.replace(' ', '_')}"
         if not os.path.exists(folder): os.makedirs(folder)
-        
-        # Save ZIP Content
         with open(os.path.join(folder, "Protected_CV.txt"), "w", encoding="utf-8") as f:
             f.write(f"CAREER ARCHITECT | RATING: {rating}/10\n\n" + self.apply_friction(cv))
-        
         with open(os.path.join(folder, "data.carf"), "w") as f:
             json.dump({"name": name, "cv": cv, "rating": rating, "v": self.version}, f)
-            
         z_name = f"{folder}.zip"
         with zipfile.ZipFile(z_name, 'w') as zf:
             for root, _, files in os.walk(folder):
