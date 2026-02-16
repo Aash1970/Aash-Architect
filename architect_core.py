@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 
 class ArchitectCore:
     def __init__(self):
-        self.version = "5.8.0"
+        self.version = "6.1.0"
         self.config_file = "system_config.json"
         self.registry_file = "client_registry.json"
 
