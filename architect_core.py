@@ -28,7 +28,7 @@ class ArchitectCore:
         folder = f"Output_{name.replace(' ', '_')}"
         if not os.path.exists(folder): os.makedirs(folder)
         with open(os.path.join(folder, f"{name}_CV.txt"), 'w', encoding='utf-8') as f:
-            f.write(f"PROT_DOC\n\n{self.apply_friction(cv)}")
+            f.write(f"CAREER ARCHITECT PROTECTED DOCUMENT\n\n{self.apply_friction(cv)}")
         with open(os.path.join(folder, f"{name}.carf"), 'w') as f:
             json.dump({"name": name, "cv": cv, "v": self.version}, f)
         z_path = f"{folder}.zip"
@@ -40,7 +40,9 @@ class ArchitectCore:
     def fetch_jobs(self, title, loc="London"):
         if not os.path.exists(self.config_file): return []
         with open(self.config_file, 'r') as f: cfg = json.load(f)
-        p = {"app_id": cfg['admin_settings']['api_keys']['adzuna_id'], "app_key": cfg['admin_settings']['api_keys']['adzuna_key'], "what": title, "where": loc}
+        p = {"app_id": cfg['admin_settings']['api_keys']['adzuna_id'], 
+             "app_key": cfg['admin_settings']['api_keys']['adzuna_key'], 
+             "what": title, "where": loc, "content-type": "application/json"}
         try:
             r = requests.get("https://api.adzuna.com/v1/api/jobs/gb/search/1", params=p)
             return r.json().get('results', [])
