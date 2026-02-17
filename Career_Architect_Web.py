@@ -1,102 +1,116 @@
-# VERSION 11.4.0 | CAREER ARCHITECT PRO | STATUS: FULL FEATURE RESTORATION
+# VERSION 11.9.0 | CAREER ARCHITECT PRO | STATUS: FULL CONSOLE RESTORATION
 import streamlit as st
 import hashlib
+import json
 from datetime import datetime, timedelta
 
-# --- 1. CORE LOGIC (SHA-512 & CRYPTO) ---
+# --- 1. CORE SECURITY ---
 def get_hash(text):
     return hashlib.sha512(text.strip().encode()).hexdigest()
 
-MASTER_HASH = "c7ad4411ac76b744d9365c71d605058866196236688d617c0a875a55745d65457f62"
+# Persistent Database & Request Queue
+if 'user_db' not in st.session_state:
+    st.session_state.user_db = {
+        "Admin": {"pwd": get_hash("PosePerfectLtd2026"), "role": "Admin", "uses": 999},
+        "Supervisor": {"pwd": get_hash("Super2026"), "role": "Supervisor", "uses": 50},
+        "User": {"pwd": get_hash("User2026"), "role": "User", "uses": 10}
+    }
+if 'pending_requests' not in st.session_state: st.session_state.pending_requests = []
+if 'wa_number' not in st.session_state: st.session_state.wa_number = "447000000000"
 
-# --- 2. CSS & FONT SYNC ---
-st.set_page_config(page_title="Career Architect PRO 11.4.0", layout="wide")
-
-st.markdown("""
+# --- 2. THE VISUAL DNA (SYNCHRONIZED) ---
+st.set_page_config(page_title="Career Architect PRO 11.9.0", layout="wide")
+st.markdown(f"""
     <style>
-    .stApp { background-color: #001f3f; color: white; }
-    [data-testid="stSidebar"] {
-        background-color: #00152b !important;
-        min-width: 450px !important;
-        border-right: 3px solid #39ff14;
-    }
-    
-    /* SYNCED FONTS: GREEN & BOLD */
-    h1, h2, h3, label, .stMarkdown p strong, button[data-baseweb="tab"] p {
-        color: #39ff14 !important;
-        font-family: 'Courier New', Courier, monospace !important; /* Professional terminal style */
-        font-weight: bold !important;
-        text-transform: uppercase;
-    }
-    
-    button[data-baseweb="tab"] p { font-size: 1.1rem !important; }
-    
-    /* Footer Positioning */
-    .footer { position: fixed; bottom: 10px; width: 100%; text-align: center; color: #39ff14; font-size: 0.8rem; }
+    .stApp {{ background-color: #001f3f; color: white; }}
+    [data-testid="stSidebar"] {{ background-color: #00152b !important; min-width: 450px !important; border-right: 3px solid #39ff14; }}
+    h1, h2, h3, label, [data-baseweb="tab"] p, .stMarkdown p strong {{
+        color: #39ff14 !important; font-family: 'Courier New', monospace !important; font-weight: bold !important; text-transform: uppercase !important;
+    }}
+    [data-baseweb="tab"] p {{ font-size: 1.1rem !important; }}
+    div.stButton > button {{ background-color: #39ff14 !important; color: #001f3f !important; font-weight: bold !important; border-radius: 8px; }}
+    .footer {{ position: fixed; bottom: 0; left: 0; width: 100%; background: #001f3f; color: #39ff14; text-align: center; padding: 5px; font-size: 0.8rem; border-top: 1px solid #39ff14; }}
     </style>
 """, unsafe_allow_html=True)
 
 if 'auth' not in st.session_state: st.session_state.auth = False
-if 'user_role' not in st.session_state: st.session_state.user_role = "Volunteer"
 
 st.title("🏛️ Career Architect PRO")
 
-# --- 3. THE MULTI-LEVEL LOGIN ---
+# --- 3. THE SIDEBAR (LOGIN & WHATSAPP) ---
 with st.sidebar:
     st.header("🔐 SYSTEM ACCESS")
-    with st.form("gate"):
-        role = st.selectbox("SELECT ROLE", ["Volunteer", "Supervisor", "Admin"])
-        pwd = st.text_input("ENTER MASTER KEY", type="password")
-        if st.form_submit_button("UNLOCK SYSTEM"):
-            if get_hash(pwd) == MASTER_HASH or pwd == "AashArchitect2026!":
-                st.session_state.auth = True
-                st.session_state.user_role = role
-                st.success(f"VERIFIED: {role}")
+    if not st.session_state.auth:
+        u_name = st.text_input("USERNAME")
+        p_word = st.text_input("PASSWORD", type="password")
+        if st.button("UNLOCK SYSTEM"):
+            if u_name in st.session_state.user_db and get_hash(p_word) == st.session_state.user_db[u_name]["pwd"]:
+                st.session_state.auth, st.session_state.current_user = True, u_name
                 st.rerun()
-            else: st.error("ACCESS DENIED")
+            else: st.error("INVALID CREDENTIALS")
+    else:
+        st.success(f"ACTIVE SESSION: {st.session_state.current_user}")
+        # WHATSAPP BIT
+        st.write("---")
+        st.header("📲 SUPPORT")
+        wa_url = f"https://wa.me/{st.session_state.wa_number}?text=Requesting%20More%20Uses"
+        st.markdown(f"[REQUEST USES VIA WHATSAPP]({wa_url})")
+        if st.button("LOGOUT"):
+            st.session_state.auth = False
+            st.rerun()
 
-# --- 4. THE FULL FEATURE ENGINE ---
+# --- 4. THE ENGINE ---
 if st.session_state.auth:
-    # AGREED NAMES RESTORED
-    t1, t2, t3, t4 = st.tabs([
-        "Market Intel", 
-        "CV Scoring & Skills Gap Analysis", 
-        "Export Protected Bundle", 
-        "Recovery & Admin Audit"
-    ])
+    user = st.session_state.user_db[st.session_state.current_user]
     
-    with t1:
-        st.subheader("Market Intel (Adzuna GB Search)")
-        st.text_input("Enter Postcode/City", help="15-mile radius default")
-        if st.button("Search 50 Roles"):
-            st.info("Searching official APIs...")
-        
-    with t2:
-        st.subheader("CV Scoring & Skills Gap Analysis")
-        st.text_area("Paste CV Text for ATS Check")
-        if st.button("Run AI Intelligence"):
-            st.progress(88)
-            st.write("ATS Score: 88% - Excellent")
+    # AGREED TABS
+    tabs = st.tabs(["Job Search", "CV Analysis", "Export CV", "CV Recovery", "Admin Console"])
+    
+    with tabs[0]: # Job Search
+        if user['role'] in ['Admin', 'Supervisor']:
+            st.subheader("Job Search (Adzuna)")
+            st.text_input("Postcode/City")
+            st.button("Search 50 Roles")
+        else: st.warning("USER ACCESS: Job Search Disabled.")
+
+    with tabs[1]: # CV Analysis
+        if user['role'] in ['Admin', 'Supervisor']:
+            st.subheader("CV Analysis & ATS scoring")
+            st.text_area("Paste CV")
+            st.button("Run AI Scoring")
+        else: st.warning("USER ACCESS: CV Analysis Disabled.")
+
+    with tabs[2]: # Export CV
+        st.subheader("Export CV (Cyrillic Friction)")
+        st.write(f"Uses Remaining: {user['uses']}")
+        if st.button("Request More Uses"):
+            st.session_state.pending_requests.append(f"{st.session_state.current_user} requested 10 uses")
+            st.success("Request sent to Admin.")
+        st.button("Generate Protected ZIP")
+
+    with tabs[3]: # CV Recovery
+        st.subheader("CV Recovery")
+        st.file_uploader("Upload .carf Metadata file")
+
+    with tabs[4]: # Admin Console
+        if user['role'] == 'Admin':
+            st.subheader("👑 ADMIN CONTROL CENTER")
             
-    with t3:
-        st.subheader("Export Protected Bundle")
-        c_name = st.text_input("Client Name")
-        if st.button("Generate .carf & Friction ZIP"):
-            st.success("Creating encrypted bundle with Cyrillic friction...")
-
-    with t4:
-        st.subheader("Recovery & Admin Audit")
-        if st.session_state.user_role == "Admin":
-            st.date_input("Set Lease Expiry", value=datetime.now() + timedelta(days=30))
-            st.number_input("Credits to Add", value=100)
+            col1, col2 = st.columns(2)
+            with col1:
+                st.write("**PENDING USE REQUESTS**")
+                for req in st.session_state.pending_requests:
+                    st.write(f"⚠️ {req}")
+                if st.button("Clear Requests"): st.session_state.pending_requests = []
+            
+            with col2:
+                st.write("**LIVE VIEW: USERS**")
+                st.json(st.session_state.user_db)
+            
+            st.write("---")
+            st.subheader("WHATSAPP CONFIG")
+            st.session_state.wa_number = st.text_input("SET ADMIN WHATSAPP (Format: 447000...)", value=st.session_state.wa_number)
         else:
-            st.warning("Admin Access Required for Lease Modification")
-else:
-    st.warning("SYSTEM LOCKED: AUTHENTICATE IN SIDEBAR")
+            st.warning("RESTRICTED: ADMIN EYES ONLY")
 
-# --- 5. THE FOOTER ---
-st.markdown(f"""
-    <div class="footer">
-        Version 11.4.0 | © 2026 Career Architect | Hemel Hempstead, UK
-    </div>
-""", unsafe_allow_html=True)
+st.markdown(f'<div class="footer">Version 11.9.0 | © 2026 Career Architect</div>', unsafe_allow_html=True)
