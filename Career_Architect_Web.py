@@ -13,7 +13,7 @@ from datetime import datetime, timedelta
 # ==============================================================
 VERSION = "FINAL MASTER STATUS"
 APP_TITLE = "CAREER ARCHITECT PRO"
-COPYRIGHT = "© 2026 POSE PERFECT LTD"
+COPYRIGHT = "© 2026 POSE CAREER ARCHITECT"
 CVP_FILENAME = "cv_data.cvp"
 HASH_FILENAME = "integrity.sha512"
 CONFIG_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "system_config.json")
