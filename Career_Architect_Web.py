@@ -815,7 +815,7 @@ def _render_cv_step5():
     _render_step_nav(5)
 
 def render_cv_builder_tab():
-    st.header("ARCHITECT CORE — CV BUILDER")
+    st.header("CAREER ARCHITECT — CV BUILDER")
     step_labels = ["PERSONAL INFO", "KEY SKILLS", "EXPERIENCE", "EDUCATION", "FINAL REVIEW"]
     progress = (st.session_state.cv_step - 1) / 4.0
     st.progress(progress)
