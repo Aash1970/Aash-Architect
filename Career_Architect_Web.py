@@ -305,6 +305,9 @@ def _init_user_db():
 def _init_cv_state():
     if "cv_data" not in st.session_state:
         st.session_state.cv_data = {
+            "full_name": "",
+            "mobile": "",
+            "email": "",
             "profile": "",
             "skills": [],
             "experience": [],
@@ -358,11 +361,11 @@ st.markdown("""
     border-right: 3px solid #39ff14 !important;
 }
 
-/* ── GLOBAL FONT ───────────────────────────────────────────── */
+/* ── GLOBAL FONT — non-menu text is WHITE ──────────────────── */
 *, p, span, div, label, h1, h2, h3, h4, h5, h6, li {
     font-family: 'Courier New', monospace !important;
     font-weight: bold !important;
-    color: #39ff14 !important;
+    color: #ffffff !important;
 }
 
 /* ── BUTTONS: NEON GREEN BG / PURE BLACK TEXT ──────────────── */
@@ -411,11 +414,11 @@ input, textarea,
 [data-baseweb="textarea"] textarea,
 div[data-testid="stNumberInput"] input {
     background-color: #111111 !important;
-    color: #39ff14 !important;
+    color: #ffffff !important;
     border: 1px solid #39ff14 !important;
     font-family: 'Courier New', monospace !important;
     font-weight: bold !important;
-    caret-color: #39ff14 !important;
+    caret-color: #ffffff !important;
 }
 
 /* ── SELECTBOX / DROPDOWN ──────────────────────────────────── */
@@ -423,7 +426,7 @@ div[data-testid="stNumberInput"] input {
 [data-baseweb="select"] div,
 [data-baseweb="popover"] {
     background-color: #111111 !important;
-    color: #39ff14 !important;
+    color: #ffffff !important;
     border: 1px solid #39ff14 !important;
     font-family: 'Courier New', monospace !important;
     font-weight: bold !important;
@@ -461,7 +464,7 @@ summary, [data-testid="stExpander"] summary {
 [data-testid="stAlert"], .stAlert {
     background-color: #0a0a0a !important;
     border: 1px solid #39ff14 !important;
-    color: #39ff14 !important;
+    color: #ffffff !important;
 }
 
 /* ── PROGRESS BAR ──────────────────────────────────────────── */
@@ -489,7 +492,7 @@ summary, [data-testid="stExpander"] summary {
 /* ── TABLE ─────────────────────────────────────────────────── */
 table, th, td {
     border: 1px solid #39ff14 !important;
-    color: #39ff14 !important;
+    color: #ffffff !important;
     background-color: #0a0a0a !important;
     font-family: 'Courier New', monospace !important;
 }
@@ -603,7 +606,7 @@ with st.sidebar:
 # SECTION 8: TAB RENDERER FUNCTIONS
 # ==============================================================
 
-# ── CV BUILDER (4-Step Wizard) ─────────────────────────────────
+# ── CV BUILDER (5-Step Wizard) ─────────────────────────────────
 
 def _render_step_nav(current_step: int):
     st.markdown("---")
@@ -614,25 +617,52 @@ def _render_step_nav(current_step: int):
                 st.session_state.cv_step -= 1
                 st.rerun()
     with col_next:
-        if current_step < 4:
+        if current_step < 5:
             if st.button("NEXT STEP ►", key=f"nav_next_{current_step}"):
                 st.session_state.cv_step += 1
                 st.rerun()
 
 def _render_cv_step1():
-    st.markdown("### STEP 1 OF 4 — PROFILE & SKILLS")
-    st.subheader("PROFESSIONAL PROFILE")
-    profile_text = st.text_area(
-        "Write your professional summary",
-        value=st.session_state.cv_data["profile"],
-        height=200,
-        key="profile_input",
-        placeholder="A results-driven professional with expertise in..."
-    )
-    st.session_state.cv_data["profile"] = profile_text
-    st.markdown("---")
-    st.subheader("CORE SKILLS")
+    st.markdown("### STEP 1 OF 5 — PERSONAL INFORMATION")
+    col_left, col_right = st.columns(2)
+    with col_left:
+        cv = st.session_state.cv_data
+        cv["full_name"] = st.text_input(
+            "Full Name",
+            value=cv["full_name"],
+            key="s1_full_name",
+            placeholder="e.g. Alexandra Johnson"
+        )
+        cv["mobile"] = st.text_input(
+            "Mobile Number",
+            value=cv["mobile"],
+            key="s1_mobile",
+            placeholder="e.g. 07700 900123"
+        )
+        cv["email"] = st.text_input(
+            "Email Address",
+            value=cv["email"],
+            key="s1_email",
+            placeholder="e.g. alex.johnson@email.com"
+        )
+    with col_right:
+        cv["profile"] = st.text_area(
+            "Professional Summary",
+            value=cv["profile"],
+            height=215,
+            key="s1_profile",
+            placeholder="A results-driven professional with expertise in..."
+        )
+    _render_step_nav(1)
+
+def _render_cv_step2():
+    st.markdown("### STEP 2 OF 5 — KEY SKILLS (10 Recommended)")
     skills = st.session_state.cv_data["skills"]
+    skill_count = len(skills)
+    if skill_count >= 10:
+        st.success(f"SKILLS ADDED: {skill_count} — RECOMMENDED TARGET REACHED")
+    else:
+        st.info(f"SKILLS ADDED: {skill_count} / 10 RECOMMENDED")
     if skills:
         st.markdown("**CURRENT SKILLS (click to remove):**")
         cols_per_row = 4
@@ -646,8 +676,11 @@ def _render_cv_step1():
                         st.rerun()
     col_input, col_add = st.columns([3, 1])
     with col_input:
-        new_skill = st.text_input("ADD SKILL", key="new_skill_input",
-                                  placeholder="e.g. Project Management")
+        new_skill = st.text_input(
+            "Add a skill",
+            key="new_skill_input",
+            placeholder="e.g. Project Management, Python, Leadership..."
+        )
     with col_add:
         st.markdown("<br>", unsafe_allow_html=True)
         if st.button("+ ADD", key="add_skill_btn"):
@@ -655,10 +688,10 @@ def _render_cv_step1():
             if val and val not in st.session_state.cv_data["skills"]:
                 st.session_state.cv_data["skills"].append(val)
                 st.rerun()
-    _render_step_nav(1)
+    _render_step_nav(2)
 
-def _render_cv_step2():
-    st.markdown("### STEP 2 OF 4 — EXPERIENCE CHRONOLOGY")
+def _render_cv_step3():
+    st.markdown("### STEP 3 OF 5 — EXPERIENCE CHRONOLOGY")
     if st.button("+ ADD NEW JOB ENTRY", key="add_job"):
         st.session_state.cv_data["experience"].append({
             "company": "", "title": "", "start_date": "", "end_date": "",
@@ -719,10 +752,10 @@ def _render_cv_step2():
                 experience.pop(idx)
                 st.rerun()
     st.session_state.cv_data["experience"] = experience
-    _render_step_nav(2)
+    _render_step_nav(3)
 
-def _render_cv_step3():
-    st.markdown("### STEP 3 OF 4 — EDUCATIONAL BACKGROUND")
+def _render_cv_step4():
+    st.markdown("### STEP 4 OF 5 — EDUCATIONAL BACKGROUND")
     edu = st.session_state.cv_data["education"]
     col1, col2 = st.columns(2)
     with col1:
@@ -734,19 +767,26 @@ def _render_cv_step3():
     edu["grade"] = st.text_input("GRADE / CLASSIFICATION", value=edu["grade"], key="edu_grade",
                                   placeholder="e.g. First Class Honours, Distinction, A*AA")
     st.session_state.cv_data["education"] = edu
-    _render_step_nav(3)
+    _render_step_nav(4)
 
-def _render_cv_step4():
-    st.markdown("### STEP 4 OF 4 — AASH FINAL REVIEW")
+def _render_cv_step5():
+    st.markdown("### STEP 5 OF 5 — AASH FINAL REVIEW")
     st.info("READ-ONLY REVIEW. USE THE BACK BUTTON TO EDIT ANY SECTION.")
     cv = st.session_state.cv_data
-    st.subheader("PROFESSIONAL PROFILE")
-    st.markdown(f"> {cv['profile']}" if cv['profile'] else "_No profile entered._")
-    st.subheader("CORE SKILLS")
+    # Personal Info
+    st.subheader("PERSONAL INFORMATION")
+    st.markdown(f"**Name:** {cv.get('full_name') or '—'}")
+    st.markdown(f"**Mobile:** {cv.get('mobile') or '—'}")
+    st.markdown(f"**Email:** {cv.get('email') or '—'}")
+    st.subheader("PROFESSIONAL SUMMARY")
+    st.markdown(f"> {cv['profile']}" if cv['profile'] else "_No summary entered._")
+    # Skills
+    st.subheader("KEY SKILLS")
     if cv["skills"]:
         st.markdown("  |  ".join([f"`{s}`" for s in cv["skills"]]))
     else:
         st.markdown("_No skills entered._")
+    # Experience
     st.subheader("EXPERIENCE CHRONOLOGY")
     if cv["experience"]:
         for idx, job in enumerate(cv["experience"]):
@@ -764,6 +804,7 @@ def _render_cv_step4():
             st.markdown("---")
     else:
         st.markdown("_No experience entries._")
+    # Education
     st.subheader("EDUCATIONAL BACKGROUND")
     edu = cv["education"]
     if edu["institution"]:
@@ -771,14 +812,14 @@ def _render_cv_step4():
         st.markdown(f"{edu['start_date']} → {edu['end_date']}  |  Grade: {edu['grade']}")
     else:
         st.markdown("_No education entered._")
-    _render_step_nav(4)
+    _render_step_nav(5)
 
 def render_cv_builder_tab():
     st.header("ARCHITECT CORE — CV BUILDER")
-    step_labels = ["PROFILE & SKILLS", "EXPERIENCE", "EDUCATION", "FINAL REVIEW"]
-    progress = (st.session_state.cv_step - 1) / 3.0
+    step_labels = ["PERSONAL INFO", "KEY SKILLS", "EXPERIENCE", "EDUCATION", "FINAL REVIEW"]
+    progress = (st.session_state.cv_step - 1) / 4.0
     st.progress(progress)
-    st.markdown(f"**PHASE {st.session_state.cv_step}/4 — {step_labels[st.session_state.cv_step - 1]}**")
+    st.markdown(f"**PHASE {st.session_state.cv_step}/5 — {step_labels[st.session_state.cv_step - 1]}**")
     st.markdown("---")
     if st.session_state.cv_step == 1:
         _render_cv_step1()
@@ -788,6 +829,8 @@ def render_cv_builder_tab():
         _render_cv_step3()
     elif st.session_state.cv_step == 4:
         _render_cv_step4()
+    elif st.session_state.cv_step == 5:
+        _render_cv_step5()
 
 # ── JOB SEARCH (Adzuna) ───────────────────────────────────────
 
