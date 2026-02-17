@@ -2,11 +2,12 @@
     "admin_settings": {
         "admin_hash": "c7ad4411ac76b744d9365c71d605058866196236688d617c0a875a55745d65457f62",
         "branding": {
-            "primary_background": "#0A192F",
-            "work_area_background": "#FFFFFF",
-            "text_primary": "#000000",
-            "text_sidebar": "#FFFFFF",
-            "accent_teal": "#008080",
+            "primary_background": "#000000",
+            "sidebar_background": "#0a0a0a",
+            "text_primary": "#39ff14",
+            "text_buttons": "#000000",
+            "accent_neon": "#39ff14",
+            "font_family": "Courier New, monospace",
             "logo_scale": 1.0
         },
         "api_keys": {
@@ -15,9 +16,9 @@
         }
     },
     "system_info": {
-        "version": "5.7.5",
-        "build_date": "2026-02-15",
-        "manifest_compliance": "V5.1",
-        "copyright": "Copyright © 2026 Career Architect"
+        "version": "FINAL MASTER STATUS",
+        "build_date": "2026-02-17",
+        "manifest_compliance": "V13.0",
+        "copyright": "Copyright \u00a9 2026 Pose Perfect Ltd"
     }
 }
