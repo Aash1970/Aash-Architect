@@ -651,7 +651,7 @@ def _render_cv_step1():
             value=cv["profile"],
             height=215,
             key="s1_profile",
-            placeholder="A results-driven professional with expertise in..."
+            placeholder="e.g. A results-driven professional with expertise in..."
         )
     _render_step_nav(1)
 
