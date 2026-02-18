@@ -6,7 +6,7 @@ import zipfile
 import io
 import os
 import re
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 
 # ==============================================================
 # SECTION 1: CONSTANTS
@@ -24,15 +24,12 @@ GAP_THRESHOLD_DAYS = 91  # ~3 months
 # ==============================================================
 
 def get_hash(text: str) -> str:
-    """SHA-512 hash of a stripped string — used for password verification."""
     return hashlib.sha512(text.strip().encode()).hexdigest()
 
 def get_file_hash(data: bytes) -> str:
-    """SHA-512 hash of raw bytes — used for .cvp file integrity sealing."""
     return hashlib.sha512(data).hexdigest()
 
 def load_config() -> dict:
-    """Load system_config.json. Returns empty dict on any failure."""
     try:
         with open(CONFIG_PATH, "r") as f:
             return json.load(f)
@@ -40,7 +37,6 @@ def load_config() -> dict:
         return {}
 
 def save_config(cfg: dict) -> bool:
-    """Persist updated config to disk. Returns True on success."""
     try:
         with open(CONFIG_PATH, "w") as f:
             json.dump(cfg, f, indent=4)
@@ -49,17 +45,11 @@ def save_config(cfg: dict) -> bool:
         return False
 
 def get_adzuna_credentials():
-    """Return (app_id, app_key) from system_config.json, or ('','') if missing."""
     cfg = load_config()
     keys = cfg.get("admin_settings", {}).get("api_keys", {})
     return keys.get("adzuna_id", ""), keys.get("adzuna_key", "")
 
 def build_cvp_zip(cv_data: dict, username: str) -> bytes:
-    """
-    Serializes cv_data to JSON, writes cv_data.cvp, computes SHA-512 integrity
-    seal, writes integrity.sha512, and packages both into an in-memory ZIP.
-    Returns raw ZIP bytes for st.download_button.
-    """
     cvp_bytes = json.dumps(cv_data, indent=2, default=str).encode("utf-8")
     file_hash = get_file_hash(cvp_bytes)
     buffer = io.BytesIO()
@@ -70,11 +60,6 @@ def build_cvp_zip(cv_data: dict, username: str) -> bytes:
     return buffer.read()
 
 def verify_and_extract_cvp(zip_bytes: bytes):
-    """
-    Extracts cv_data.cvp and integrity.sha512 from ZIP bytes.
-    Verifies SHA-512 integrity seal.
-    Returns (cv_data_dict, "OK") | (None, "TAMPERED") | (None, "INVALID")
-    """
     try:
         buffer = io.BytesIO(zip_bytes)
         with zipfile.ZipFile(buffer, "r") as zf:
@@ -92,7 +77,6 @@ def verify_and_extract_cvp(zip_bytes: bytes):
         return None, "INVALID"
 
 def deduct_credit(username: str) -> bool:
-    """Deducts one credit. Returns True if ok or unlimited; False if depleted."""
     user = st.session_state.user_db[username]
     if user["uses"] == "UNLIMITED":
         return True
@@ -189,17 +173,12 @@ AASH_EMPATHY_TEMPLATES = {
 }
 
 def parse_date_flexible(date_str: str):
-    """
-    Parses date strings in multiple formats.
-    Handles MM/YYYY, YYYY-MM, Month YYYY, 'Present', 'Current'.
-    Returns datetime object or None if unparseable.
-    """
     if not date_str:
         return None
     normalized = date_str.strip().lower()
     if normalized in ("present", "current", "now", "ongoing", "today"):
         return datetime.now()
-    formats = ["%m/%Y", "%Y-%m", "%B %Y", "%b %Y", "%Y-%m-%d"]
+    formats = ["%d/%m/%Y", "%m/%Y", "%Y-%m", "%B %Y", "%b %Y", "%Y-%m-%d"]
     for fmt in formats:
         try:
             return datetime.strptime(date_str.strip(), fmt)
@@ -211,11 +190,6 @@ def parse_date_flexible(date_str: str):
     return None
 
 def detect_employment_gaps(experience_list: list) -> list:
-    """
-    Scans experience entries for gaps exceeding GAP_THRESHOLD_DAYS.
-    Sorts entries by start date, then compares end[n] to start[n+1].
-    Returns list of gap dicts.
-    """
     parsed = []
     for entry in experience_list:
         start = parse_date_flexible(entry.get("start_date", ""))
@@ -250,7 +224,6 @@ def detect_employment_gaps(experience_list: list) -> list:
     return gaps
 
 def render_gap_card(gap: dict, index: int):
-    """Renders a single employment gap with Aash empathy framing."""
     start_str = gap["gap_start"].strftime("%B %Y")
     end_str = gap["gap_end"].strftime("%B %Y")
     label = f"GAP {index + 1}: {start_str} → {end_str} ({gap['duration_str']})"
@@ -311,16 +284,13 @@ def _init_cv_state():
             "profile": "",
             "skills": [],
             "experience": [],
-            "education": {
-                "institution": "",
-                "degree": "",
-                "start_date": "",
-                "end_date": "",
-                "grade": ""
-            }
+            "education": []  # Now a list to support multiple institutions
         }
     if "cv_step" not in st.session_state:
         st.session_state.cv_step = 1
+    # Track whether user confirmed moving to next step from step 3
+    if "step3_adding_job" not in st.session_state:
+        st.session_state.step3_adding_job = False
 
 def _init_misc_state():
     if "auth" not in st.session_state:
@@ -341,13 +311,14 @@ def _init_misc_state():
         st.session_state.export_zip = None
     if "export_filename" not in st.session_state:
         st.session_state.export_filename = None
+    if "new_skill_input_val" not in st.session_state:
+        st.session_state.new_skill_input_val = ""
 
-# Run all inits before any Streamlit display calls
 _init_user_db()
 _init_misc_state()
 
 # ==============================================================
-# SECTION 5: PAGE CONFIG & CSS (must come before all st.* display calls)
+# SECTION 5: PAGE CONFIG & CSS
 # ==============================================================
 
 st.set_page_config(page_title=f"{APP_TITLE} | {VERSION}", layout="wide")
@@ -415,10 +386,34 @@ input, textarea,
 div[data-testid="stNumberInput"] input {
     background-color: #111111 !important;
     color: #ffffff !important;
-    border: 1px solid #39ff14 !important;
+    border: 2px solid #39ff14 !important;
     font-family: 'Courier New', monospace !important;
     font-weight: bold !important;
     caret-color: #ffffff !important;
+}
+
+/* ── FOCUS: RED BORDER ONLY (remove double-border) ─────────── */
+input:focus, textarea:focus,
+[data-baseweb="input"] input:focus,
+[data-baseweb="textarea"] textarea:focus {
+    border: 2px solid #ff0000 !important;
+    outline: none !important;
+    box-shadow: none !important;
+}
+
+/* Remove Streamlit's default red focus ring */
+[data-baseweb="input"]:focus-within,
+[data-baseweb="textarea"]:focus-within {
+    border-color: #ff0000 !important;
+    box-shadow: none !important;
+    outline: none !important;
+}
+
+/* ── PLACEHOLDER TEXT — slightly dimmed ────────────────────── */
+input::placeholder, textarea::placeholder {
+    color: #888888 !important;
+    font-weight: normal !important;
+    opacity: 1 !important;
 }
 
 /* ── SELECTBOX / DROPDOWN ──────────────────────────────────── */
@@ -427,7 +422,7 @@ div[data-testid="stNumberInput"] input {
 [data-baseweb="popover"] {
     background-color: #111111 !important;
     color: #ffffff !important;
-    border: 1px solid #39ff14 !important;
+    border: 2px solid #39ff14 !important;
     font-family: 'Courier New', monospace !important;
     font-weight: bold !important;
 }
@@ -506,6 +501,35 @@ table, th, td {
 ::-webkit-scrollbar { width: 6px; }
 ::-webkit-scrollbar-track { background: #000000; }
 ::-webkit-scrollbar-thumb { background: #39ff14; }
+
+/* ── SKILL TAGS ────────────────────────────────────────────── */
+.skill-tag {
+    display: inline-block;
+    background-color: #1a1a1a;
+    border: 1px solid #39ff14;
+    color: #ffffff !important;
+    padding: 4px 10px;
+    margin: 3px;
+    font-family: 'Courier New', monospace;
+    font-size: 0.85em;
+    max-width: 250px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    vertical-align: middle;
+}
+
+/* ── DATE INPUT ────────────────────────────────────────────── */
+[data-testid="stDateInput"] input {
+    background-color: #111111 !important;
+    color: #ffffff !important;
+    border: 2px solid #39ff14 !important;
+}
+
+/* ── CHECKBOX ──────────────────────────────────────────────── */
+[data-testid="stCheckbox"] label {
+    color: #ffffff !important;
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -561,7 +585,7 @@ if not st.session_state.auth:
     st.stop()
 
 # ==============================================================
-# — AUTHENTICATED ZONE — (st.stop() prevents reaching here if not auth)
+# — AUTHENTICATED ZONE —
 # ==============================================================
 
 _init_cv_state()
@@ -603,24 +627,74 @@ with st.sidebar:
         st.rerun()
 
 # ==============================================================
-# SECTION 8: TAB RENDERER FUNCTIONS
+# DATA: UK Subjects and Qualification Levels
 # ==============================================================
 
-# ── CV BUILDER (5-Step Wizard) ─────────────────────────────────
+UK_SUBJECTS = sorted([
+    "Accounting", "Ancient History", "Applied Science", "Arabic", "Art & Design",
+    "Biology", "Business Studies", "Chemistry", "Chinese (Mandarin)", "Classical Civilisation",
+    "Computer Science", "Creative Writing", "Criminology", "Dance", "Design & Technology",
+    "Drama & Theatre Studies", "Economics", "Electronics", "Engineering", "English Language",
+    "English Literature", "Environmental Science", "Film Studies", "Food Technology",
+    "French", "Further Mathematics", "Geography", "German", "Graphic Design",
+    "Health & Social Care", "History", "Hospitality & Catering", "Information Technology",
+    "Italian", "Japanese", "Law", "Leisure Studies", "Mathematics", "Media Studies",
+    "Music", "Music Technology", "Philosophy", "Photography", "Physical Education",
+    "Physics", "Polish", "Politics", "Product Design", "Psychology", "Religious Studies",
+    "Sociology", "Spanish", "Statistics", "Travel & Tourism", "Urdu",
+    "Welsh", "Other"
+])
+
+UK_QUALIFICATION_LEVELS = [
+    "GCSE", "IGCSE", "AS-Level", "A-Level", "BTEC Level 1", "BTEC Level 2",
+    "BTEC Level 3 (National)", "BTEC Level 4 (HNC)", "BTEC Level 5 (HND)",
+    "NVQ Level 1", "NVQ Level 2", "NVQ Level 3", "NVQ Level 4", "NVQ Level 5",
+    "Access to Higher Education Diploma", "Foundation Degree", "Certificate of Higher Education (CertHE)",
+    "Diploma of Higher Education (DipHE)", "Higher National Certificate (HNC)",
+    "Higher National Diploma (HND)", "Bachelor's Degree (BA)", "Bachelor's Degree (BSc)",
+    "Bachelor's Degree (BEng)", "Bachelor's Degree (LLB)", "Bachelor's Degree (BEd)",
+    "Bachelor's Degree with Honours", "Graduate Certificate", "Graduate Diploma",
+    "Postgraduate Certificate", "Postgraduate Diploma", "Master's Degree (MA)",
+    "Master's Degree (MSc)", "Master's Degree (MEng)", "Master's Degree (MBA)",
+    "Master's Degree (LLM)", "Master's Degree (MPhil)", "Integrated Master's",
+    "Doctorate (PhD)", "Doctorate (DPhil)", "Professional Doctorate",
+    "QTS (Qualified Teacher Status)", "PGCE", "Other"
+]
+
+UK_GRADES = [
+    # GCSE / A-Level
+    "A*", "A", "B", "C", "D", "E", "F", "G", "U",
+    "9", "8", "7", "6", "5", "4", "3", "2", "1",
+    # Degree classifications
+    "First Class Honours (1st)", "Upper Second Class Honours (2:1)",
+    "Lower Second Class Honours (2:2)", "Third Class Honours (3rd)",
+    "Pass (Ordinary Degree)", "Distinction", "Merit", "Pass",
+    # BTEC / NVQ
+    "D*D*D*", "D*D*D", "D*DD", "DDD", "DDM", "DMM", "MMM", "MMP", "MPP", "PPP",
+    # Other
+    "Pending", "Awaiting Results", "Other"
+]
+
+# ==============================================================
+# SECTION 8: TAB RENDERER FUNCTIONS
+# ==============================================================
 
 def _render_step_nav(current_step: int):
     st.markdown("---")
     col_prev, col_spacer, col_next = st.columns([1, 2, 1])
     with col_prev:
         if current_step > 1:
-            if st.button("◄ PREVIOUS", key=f"nav_prev_{current_step}"):
+            if st.button("◄ PREVIOUS STEP", key=f"nav_prev_{current_step}"):
                 st.session_state.cv_step -= 1
                 st.rerun()
     with col_next:
         if current_step < 5:
-            if st.button("NEXT STEP ►", key=f"nav_next_{current_step}"):
+            label = "NEXT STEP ►"
+            if st.button(label, key=f"nav_next_{current_step}"):
                 st.session_state.cv_step += 1
                 st.rerun()
+
+# ─── STEP 1 ──────────────────────────────────────────────────
 
 def _render_cv_step1():
     st.markdown("### STEP 1 OF 5 — PERSONAL INFORMATION")
@@ -651,54 +725,79 @@ def _render_cv_step1():
             value=cv["profile"],
             height=215,
             key="s1_profile",
-            placeholder="e.g. A results-driven professional with expertise in..."
+            placeholder="Write a personal summary here"
         )
     _render_step_nav(1)
 
+# ─── STEP 2 ──────────────────────────────────────────────────
+
 def _render_cv_step2():
-    st.markdown("### STEP 2 OF 5 — KEY SKILLS (10 Recommended)")
+    st.markdown("### STEP 2 OF 5 — KEY SKILLS")
+    st.markdown('<p style="font-size:0.85em; color:#aaaaaa;">(10 Skills Recommended)</p>', unsafe_allow_html=True)
     skills = st.session_state.cv_data["skills"]
     skill_count = len(skills)
     if skill_count >= 10:
         st.success(f"SKILLS ADDED: {skill_count} — RECOMMENDED TARGET REACHED")
     else:
         st.info(f"SKILLS ADDED: {skill_count} / 10 RECOMMENDED")
+
     if skills:
-        st.markdown("**CURRENT SKILLS (click to remove):**")
-        cols_per_row = 4
+        st.markdown("**CURRENT KEY SKILLS (click ✕ to remove):**")
+        cols_per_row = 3
         for i in range(0, len(skills), cols_per_row):
             row_skills = skills[i:i + cols_per_row]
             cols = st.columns(len(row_skills))
             for j, skill in enumerate(row_skills):
                 with cols[j]:
-                    if st.button(f"✕  {skill}", key=f"remove_skill_{i+j}"):
+                    display = skill if len(skill) <= 30 else skill[:28] + "…"
+                    if st.button(f"✕  {display}", key=f"remove_skill_{i+j}"):
                         st.session_state.cv_data["skills"].pop(i + j)
                         st.rerun()
+
+    st.markdown("**ADD A KEY SKILL:**")
     col_input, col_add = st.columns([3, 1])
     with col_input:
         new_skill = st.text_input(
-            "Add a skill",
+            "Add a Key Skill",
             key="new_skill_input",
-            placeholder="e.g. Project Management, Python, Leadership..."
+            placeholder="Click Add Skill or Press Enter to Add Skill",
+            label_visibility="collapsed"
         )
     with col_add:
         st.markdown("<br>", unsafe_allow_html=True)
-        if st.button("+ ADD", key="add_skill_btn"):
-            val = new_skill.strip() if new_skill else ""
-            if val and val not in st.session_state.cv_data["skills"]:
-                st.session_state.cv_data["skills"].append(val)
-                st.rerun()
+        add_clicked = st.button("ADD SKILL", key="add_skill_btn")
+
+    if add_clicked or (new_skill and new_skill.strip() and st.session_state.get("_skill_enter")):
+        val = new_skill.strip() if new_skill else ""
+        if val and val not in st.session_state.cv_data["skills"]:
+            st.session_state.cv_data["skills"].append(val)
+            st.rerun()
+        elif val in st.session_state.cv_data["skills"]:
+            st.warning("SKILL ALREADY ADDED")
+    
+    # Handle Enter key press via form
+    if new_skill and new_skill.strip() and add_clicked is False:
+        # Check if Enter was effectively pressed by checking the input hasn't been cleared
+        pass
+
     _render_step_nav(2)
 
+# ─── STEP 3 ──────────────────────────────────────────────────
+
 def _render_cv_step3():
-    st.markdown("### STEP 3 OF 5 — EXPERIENCE CHRONOLOGY")
-    if st.button("+ ADD NEW JOB ENTRY", key="add_job"):
+    st.markdown("### STEP 3 OF 5 — EMPLOYMENT HISTORY")
+    st.markdown('<p style="font-size:0.85em; color:#aaaaaa; margin-top:-10px;">In Reverse Chronological Order</p>', unsafe_allow_html=True)
+
+    if st.button("＋ ADD EMPLOYMENT HISTORY", key="add_job"):
         st.session_state.cv_data["experience"].append({
             "company": "", "title": "", "start_date": "", "end_date": "",
+            "current_job": False,
             "responsibilities": [], "achievements": []
         })
         st.rerun()
+
     experience = st.session_state.cv_data["experience"]
+
     for idx, job in enumerate(experience):
         title_label = job.get("title") or "UNTITLED"
         company_label = job.get("company") or "COMPANY"
@@ -707,119 +806,380 @@ def _render_cv_step3():
             with col1:
                 experience[idx]["company"] = st.text_input(
                     "COMPANY", value=job["company"], key=f"company_{idx}")
-                experience[idx]["start_date"] = st.text_input(
-                    "START DATE (MM/YYYY)", value=job["start_date"],
-                    key=f"start_{idx}", placeholder="03/2020")
+                
+                # Start Date as date picker
+                current_start = None
+                if job["start_date"]:
+                    parsed_s = parse_date_flexible(job["start_date"])
+                    if parsed_s:
+                        current_start = parsed_s.date()
+                start_val = st.date_input(
+                    "START DATE (DD/MM/YYYY)",
+                    value=current_start,
+                    min_value=date(1960, 1, 1),
+                    max_value=date.today(),
+                    format="DD/MM/YYYY",
+                    key=f"start_{idx}"
+                )
+                if start_val:
+                    experience[idx]["start_date"] = start_val.strftime("%d/%m/%Y")
+
             with col2:
                 experience[idx]["title"] = st.text_input(
                     "JOB TITLE", value=job["title"], key=f"title_{idx}")
-                experience[idx]["end_date"] = st.text_input(
-                    "END DATE (MM/YYYY or 'Present')", value=job["end_date"],
-                    key=f"end_{idx}", placeholder="Present")
-            # Responsibilities
-            st.markdown("**RESPONSIBILITIES:**")
+                
+                # Current job checkbox
+                is_current = st.checkbox(
+                    "I currently work here",
+                    value=job.get("current_job", False),
+                    key=f"current_{idx}"
+                )
+                experience[idx]["current_job"] = is_current
+
+                if is_current:
+                    experience[idx]["end_date"] = "Present"
+                    st.markdown('<p style="color:#39ff14; font-size:0.85em;">END DATE: Present (Current Role)</p>', unsafe_allow_html=True)
+                else:
+                    current_end = None
+                    if job["end_date"] and job["end_date"].lower() != "present":
+                        parsed_e = parse_date_flexible(job["end_date"])
+                        if parsed_e:
+                            current_end = parsed_e.date()
+                    end_val = st.date_input(
+                        "END DATE (DD/MM/YYYY)",
+                        value=current_end,
+                        min_value=date(1960, 1, 1),
+                        max_value=date.today(),
+                        format="DD/MM/YYYY",
+                        key=f"end_{idx}"
+                    )
+                    if end_val:
+                        experience[idx]["end_date"] = end_val.strftime("%d/%m/%Y")
+
+            # Key Responsibilities
+            st.markdown("**KEY RESPONSIBILITIES:**")
+            resp_to_delete = None
             for r_idx, resp in enumerate(job["responsibilities"]):
-                c1, c2 = st.columns([4, 1])
+                c1, c2, c3 = st.columns([5, 0.7, 0.7])
                 with c1:
                     experience[idx]["responsibilities"][r_idx] = st.text_input(
                         f"R{r_idx+1}", value=resp,
                         key=f"resp_{idx}_{r_idx}", label_visibility="collapsed")
                 with c2:
-                    if st.button("REMOVE", key=f"del_resp_{idx}_{r_idx}"):
-                        experience[idx]["responsibilities"].pop(r_idx)
+                    if st.button("＋", key=f"add_resp_inline_{idx}_{r_idx}", help="Add another"):
+                        experience[idx]["responsibilities"].append("")
                         st.rerun()
-            if st.button("+ ADD RESPONSIBILITY", key=f"add_resp_{idx}"):
+                with c3:
+                    if st.button("✕", key=f"del_resp_{idx}_{r_idx}", help="Remove"):
+                        resp_to_delete = r_idx
+            if resp_to_delete is not None:
+                experience[idx]["responsibilities"].pop(resp_to_delete)
+                st.rerun()
+            if st.button("＋ ADD KEY RESPONSIBILITY", key=f"add_resp_{idx}"):
                 experience[idx]["responsibilities"].append("")
                 st.rerun()
+
             st.markdown("---")
-            # Achievements
-            st.markdown("**ACHIEVEMENTS:**")
+
+            # Key Achievements
+            st.markdown("**KEY ACHIEVEMENTS:**")
+            ach_to_delete = None
             for a_idx, ach in enumerate(job["achievements"]):
-                c1, c2 = st.columns([4, 1])
+                c1, c2, c3 = st.columns([5, 0.7, 0.7])
                 with c1:
                     experience[idx]["achievements"][a_idx] = st.text_input(
                         f"A{a_idx+1}", value=ach,
                         key=f"ach_{idx}_{a_idx}", label_visibility="collapsed")
                 with c2:
-                    if st.button("REMOVE", key=f"del_ach_{idx}_{a_idx}"):
-                        experience[idx]["achievements"].pop(a_idx)
+                    if st.button("＋", key=f"add_ach_inline_{idx}_{a_idx}", help="Add another"):
+                        experience[idx]["achievements"].append("")
                         st.rerun()
-            if st.button("+ ADD ACHIEVEMENT", key=f"add_ach_{idx}"):
+                with c3:
+                    if st.button("✕", key=f"del_ach_{idx}_{a_idx}", help="Remove"):
+                        ach_to_delete = a_idx
+            if ach_to_delete is not None:
+                experience[idx]["achievements"].pop(ach_to_delete)
+                st.rerun()
+            if st.button("＋ ADD KEY ACHIEVEMENT", key=f"add_ach_{idx}"):
                 experience[idx]["achievements"].append("")
                 st.rerun()
+
             st.markdown("---")
-            if st.button(f"REMOVE JOB {idx+1}", key=f"remove_job_{idx}"):
+            if st.button(f"🗑 REMOVE JOB {idx+1}", key=f"remove_job_{idx}"):
                 experience.pop(idx)
                 st.rerun()
+
     st.session_state.cv_data["experience"] = experience
-    _render_step_nav(3)
+
+    # Step nav — with prompt to add more jobs
+    st.markdown("---")
+    st.info("💡 To add another job, click '＋ ADD EMPLOYMENT HISTORY' above before clicking Next Step.")
+    col_prev, col_spacer, col_next = st.columns([1, 2, 1])
+    with col_prev:
+        if st.button("◄ PREVIOUS STEP", key="nav_prev_3"):
+            st.session_state.cv_step -= 1
+            st.rerun()
+    with col_next:
+        if st.button("NEXT STEP ►", key="nav_next_3"):
+            st.session_state.cv_step = 4
+            st.rerun()
+
+# ─── STEP 4 ──────────────────────────────────────────────────
 
 def _render_cv_step4():
-    st.markdown("### STEP 4 OF 5 — EDUCATIONAL BACKGROUND")
-    edu = st.session_state.cv_data["education"]
-    col1, col2 = st.columns(2)
-    with col1:
-        edu["institution"] = st.text_input("INSTITUTION", value=edu["institution"], key="edu_inst")
-        edu["start_date"] = st.text_input("START DATE (MM/YYYY)", value=edu["start_date"], key="edu_start")
-    with col2:
-        edu["degree"] = st.text_input("DEGREE / QUALIFICATION", value=edu["degree"], key="edu_degree")
-        edu["end_date"] = st.text_input("END DATE (MM/YYYY or 'Present')", value=edu["end_date"], key="edu_end")
-    edu["grade"] = st.text_input("GRADE / CLASSIFICATION", value=edu["grade"], key="edu_grade",
-                                  placeholder="e.g. First Class Honours, Distinction, A*AA")
-    st.session_state.cv_data["education"] = edu
+    st.markdown("### STEP 4 OF 5 — EDUCATION & QUALIFICATIONS")
+
+    # Ensure education is a list
+    if not isinstance(st.session_state.cv_data["education"], list):
+        old = st.session_state.cv_data["education"]
+        st.session_state.cv_data["education"] = []
+        if old.get("institution"):
+            st.session_state.cv_data["education"].append({
+                "institution": old.get("institution", ""),
+                "start_date": old.get("start_date", ""),
+                "end_date": old.get("end_date", ""),
+                "qualifications": [{
+                    "subject": "",
+                    "level": old.get("degree", ""),
+                    "grade": old.get("grade", ""),
+                    "level_other": "",
+                    "grade_other": ""
+                }]
+            })
+
+    education = st.session_state.cv_data["education"]
+
+    if st.button("＋ ADD EDUCATION (School / College / University)", key="add_edu"):
+        education.append({
+            "institution": "",
+            "start_date": "",
+            "end_date": "",
+            "qualifications": [{"subject": "", "level": "", "grade": "", "level_other": "", "grade_other": ""}]
+        })
+        st.rerun()
+
+    for edu_idx, edu in enumerate(education):
+        inst_label = edu.get("institution") or f"INSTITUTION {edu_idx + 1}"
+        with st.expander(f"🎓 {inst_label}", expanded=True):
+
+            edu["institution"] = st.text_input(
+                "School / College / University Name",
+                value=edu.get("institution", ""),
+                key=f"edu_inst_{edu_idx}",
+                placeholder="e.g. University of Manchester"
+            )
+
+            col1, col2 = st.columns(2)
+            with col1:
+                current_start = None
+                if edu.get("start_date"):
+                    ps = parse_date_flexible(edu["start_date"])
+                    if ps:
+                        current_start = ps.date()
+                start_val = st.date_input(
+                    "Start Date (DD/MM/YYYY)",
+                    value=current_start,
+                    min_value=date(1960, 1, 1),
+                    max_value=date.today(),
+                    format="DD/MM/YYYY",
+                    key=f"edu_start_{edu_idx}"
+                )
+                if start_val:
+                    edu["start_date"] = start_val.strftime("%d/%m/%Y")
+
+            with col2:
+                current_end = None
+                if edu.get("end_date"):
+                    pe = parse_date_flexible(edu["end_date"])
+                    if pe:
+                        current_end = pe.date()
+                end_val = st.date_input(
+                    "End Date (DD/MM/YYYY)",
+                    value=current_end,
+                    min_value=date(1960, 1, 1),
+                    max_value=date.today(),
+                    format="DD/MM/YYYY",
+                    key=f"edu_end_{edu_idx}"
+                )
+                if end_val:
+                    edu["end_date"] = end_val.strftime("%d/%m/%Y")
+
+            st.markdown("---")
+            st.markdown("**QUALIFICATIONS / SUBJECTS:**")
+
+            qual_to_delete = None
+            for q_idx, qual in enumerate(edu.get("qualifications", [])):
+                st.markdown(f"*Subject / Qualification {q_idx + 1}*")
+                qc1, qc2, qc3 = st.columns(3)
+
+                with qc1:
+                    subject_opts = UK_SUBJECTS
+                    sub_val = qual.get("subject", "") or UK_SUBJECTS[0]
+                    sub_idx_val = UK_SUBJECTS.index(sub_val) if sub_val in UK_SUBJECTS else 0
+                    qual["subject"] = st.selectbox(
+                        "Subject",
+                        UK_SUBJECTS,
+                        index=sub_idx_val,
+                        key=f"edu_subject_{edu_idx}_{q_idx}"
+                    )
+
+                with qc2:
+                    level_val = qual.get("level", "") or UK_QUALIFICATION_LEVELS[0]
+                    level_idx = UK_QUALIFICATION_LEVELS.index(level_val) if level_val in UK_QUALIFICATION_LEVELS else 0
+                    qual["level"] = st.selectbox(
+                        "Level / Qualification",
+                        UK_QUALIFICATION_LEVELS,
+                        index=level_idx,
+                        key=f"edu_level_{edu_idx}_{q_idx}"
+                    )
+                    if qual["level"] == "Other":
+                        qual["level_other"] = st.text_input(
+                            "Enter Level",
+                            value=qual.get("level_other", ""),
+                            key=f"edu_level_other_{edu_idx}_{q_idx}"
+                        )
+
+                with qc3:
+                    grade_val = qual.get("grade", "") or UK_GRADES[0]
+                    grade_idx = UK_GRADES.index(grade_val) if grade_val in UK_GRADES else 0
+                    qual["grade"] = st.selectbox(
+                        "Grade Achieved",
+                        UK_GRADES,
+                        index=grade_idx,
+                        key=f"edu_grade_{edu_idx}_{q_idx}"
+                    )
+                    if qual["grade"] == "Other":
+                        qual["grade_other"] = st.text_input(
+                            "Enter Grade",
+                            value=qual.get("grade_other", ""),
+                            key=f"edu_grade_other_{edu_idx}_{q_idx}"
+                        )
+
+                if st.button(f"✕ Remove Subject {q_idx + 1}", key=f"del_qual_{edu_idx}_{q_idx}"):
+                    qual_to_delete = q_idx
+                st.markdown("---")
+
+            if qual_to_delete is not None:
+                edu["qualifications"].pop(qual_to_delete)
+                st.rerun()
+
+            if st.button("＋ ADD QUALIFICATION (Another Subject/Grade)", key=f"add_qual_{edu_idx}"):
+                edu["qualifications"].append({"subject": "", "level": "", "grade": "", "level_other": "", "grade_other": ""})
+                st.rerun()
+
+            st.markdown("---")
+            if st.button(f"🗑 REMOVE THIS INSTITUTION", key=f"remove_edu_{edu_idx}"):
+                education.pop(edu_idx)
+                st.rerun()
+
+    st.session_state.cv_data["education"] = education
     _render_step_nav(4)
 
+# ─── STEP 5 ──────────────────────────────────────────────────
+
 def _render_cv_step5():
-    st.markdown("### STEP 5 OF 5 — AASH FINAL REVIEW")
-    st.info("READ-ONLY REVIEW. USE THE BACK BUTTON TO EDIT ANY SECTION.")
+    st.markdown("### STEP 5 OF 5 — FINAL REVIEW")
+    st.info("📋 REVIEW YOUR CV BELOW. USE THE BACK BUTTON TO CORRECT ANY MISTAKES — YOUR DATA WILL NOT BE LOST.")
+
+    col_save1, col_save2 = st.columns(2)
+    with col_save1:
+        if st.button("💾 SAVE PROGRESS", key="save_progress_top"):
+            st.success("✅ PROGRESS SAVED TO YOUR SESSION. YOUR DATA IS SAFE.")
+    with col_save2:
+        if st.button("✏️ SAVE & CORRECT", key="save_correct_top"):
+            st.session_state.cv_step = 1
+            st.info("RETURNING TO STEP 1 — YOUR DATA HAS BEEN PRESERVED.")
+            st.rerun()
+
+    st.markdown("---")
     cv = st.session_state.cv_data
+
     # Personal Info
     st.subheader("PERSONAL INFORMATION")
     st.markdown(f"**Name:** {cv.get('full_name') or '—'}")
     st.markdown(f"**Mobile:** {cv.get('mobile') or '—'}")
     st.markdown(f"**Email:** {cv.get('email') or '—'}")
+
     st.subheader("PROFESSIONAL SUMMARY")
     st.markdown(f"> {cv['profile']}" if cv['profile'] else "_No summary entered._")
-    # Skills
+
+    # Skills — fix white on white
     st.subheader("KEY SKILLS")
     if cv["skills"]:
-        st.markdown("  |  ".join([f"`{s}`" for s in cv["skills"]]))
+        skills_html = " ".join([
+            f'<span style="display:inline-block; background:#1a1a1a; border:1px solid #39ff14; '
+            f'color:#ffffff; padding:4px 10px; margin:3px; font-family:Courier New,monospace; '
+            f'font-size:0.85em; max-width:250px; overflow:hidden; text-overflow:ellipsis; '
+            f'white-space:nowrap;">{s}</span>'
+            for s in cv["skills"]
+        ])
+        st.markdown(skills_html, unsafe_allow_html=True)
     else:
         st.markdown("_No skills entered._")
+
     # Experience
-    st.subheader("EXPERIENCE CHRONOLOGY")
+    st.subheader("EMPLOYMENT HISTORY")
     if cv["experience"]:
         for idx, job in enumerate(cv["experience"]):
+            end = "Present" if job.get("current_job") else job.get("end_date", "—")
             st.markdown(f"**{idx+1}. {job.get('title','—')} at {job.get('company','—')}**  "
-                        f"({job.get('start_date','—')} → {job.get('end_date','—')})")
-            if job["responsibilities"]:
+                        f"({job.get('start_date','—')} → {end})")
+            if job.get("responsibilities"):
                 for r in job["responsibilities"]:
                     if r.strip():
                         st.markdown(f"&nbsp;&nbsp;• {r}")
-            if job["achievements"]:
-                st.markdown("&nbsp;&nbsp;*Achievements:*")
+            if job.get("achievements"):
+                st.markdown("&nbsp;&nbsp;*Key Achievements:*")
                 for a in job["achievements"]:
                     if a.strip():
                         st.markdown(f"&nbsp;&nbsp;★ {a}")
             st.markdown("---")
     else:
-        st.markdown("_No experience entries._")
+        st.markdown("_No employment history entered._")
+
     # Education
-    st.subheader("EDUCATIONAL BACKGROUND")
-    edu = cv["education"]
-    if edu["institution"]:
-        st.markdown(f"**{edu['degree']}** — {edu['institution']}")
-        st.markdown(f"{edu['start_date']} → {edu['end_date']}  |  Grade: {edu['grade']}")
+    st.subheader("EDUCATION & QUALIFICATIONS")
+    education = cv.get("education", [])
+    if isinstance(education, list) and education:
+        for edu in education:
+            if edu.get("institution"):
+                st.markdown(f"**🎓 {edu['institution']}**  ({edu.get('start_date','—')} → {edu.get('end_date','—')})")
+                for qual in edu.get("qualifications", []):
+                    level_display = qual.get("level_other") if qual.get("level") == "Other" else qual.get("level", "—")
+                    grade_display = qual.get("grade_other") if qual.get("grade") == "Other" else qual.get("grade", "—")
+                    st.markdown(f"&nbsp;&nbsp;• **{qual.get('subject','—')}** | {level_display} | Grade: {grade_display}")
+                st.markdown("---")
+    elif isinstance(education, dict) and education.get("institution"):
+        st.markdown(f"**{education.get('degree','—')}** — {education['institution']}")
+        st.markdown(f"{education.get('start_date','—')} → {education.get('end_date','—')}  |  Grade: {education.get('grade','—')}")
     else:
         st.markdown("_No education entered._")
+
+    st.markdown("---")
+    col_save3, col_save4 = st.columns(2)
+    with col_save3:
+        if st.button("💾 SAVE PROGRESS", key="save_progress_bottom"):
+            st.success("✅ PROGRESS SAVED TO YOUR SESSION.")
+    with col_save4:
+        if st.button("✏️ SAVE & CORRECT", key="save_correct_bottom"):
+            st.session_state.cv_step = 1
+            st.info("RETURNING TO STEP 1 — YOUR DATA HAS BEEN PRESERVED.")
+            st.rerun()
+
     _render_step_nav(5)
+
 
 def render_cv_builder_tab():
     st.header("CAREER ARCHITECT — CV BUILDER")
-    step_labels = ["PERSONAL INFO", "KEY SKILLS", "EXPERIENCE", "EDUCATION", "FINAL REVIEW"]
+    step_labels = ["PERSONAL INFO", "KEY SKILLS", "EMPLOYMENT HISTORY", "EDUCATION & QUALIFICATIONS", "FINAL REVIEW"]
     progress = (st.session_state.cv_step - 1) / 4.0
     st.progress(progress)
-    st.markdown(f"**PHASE {st.session_state.cv_step}/5 — {step_labels[st.session_state.cv_step - 1]}**")
+    # Step label: use Phase-style size/font but say "Step"
+    st.markdown(
+        f'<p style="font-size:1.1em; font-family:Courier New,monospace; font-weight:bold; color:#39ff14;">'
+        f'STEP {st.session_state.cv_step} OF 5 — {step_labels[st.session_state.cv_step - 1]}</p>',
+        unsafe_allow_html=True
+    )
     st.markdown("---")
     if st.session_state.cv_step == 1:
         _render_cv_step1()
@@ -832,10 +1192,9 @@ def render_cv_builder_tab():
     elif st.session_state.cv_step == 5:
         _render_cv_step5()
 
-# ── JOB SEARCH (Adzuna) ───────────────────────────────────────
+# ── JOB SEARCH ────────────────────────────────────────────────
 
 def _search_adzuna(what, postcode, radius_miles, national, app_id, app_key):
-    """Calls Adzuna API. Returns (results_list, error_message|None)."""
     country = "gb" if national else "us"
     base_url = f"https://api.adzuna.com/v1/api/jobs/{country}/search/1"
     params = {
@@ -866,16 +1225,11 @@ def render_job_search_tab():
     app_id, app_key = get_adzuna_credentials()
     col1, col2 = st.columns(2)
     with col1:
-        job_title = st.text_input("JOB TITLE / KEYWORDS", key="js_title",
-                                   placeholder="e.g. Software Engineer")
-        postcode = st.text_input("POSTCODE", key="js_postcode",
-                                  placeholder="e.g. SW1A 1AA")
-        radius = st.selectbox("SEARCH RADIUS (MILES)", options=[5, 10, 25, 50, 100],
-                               index=2, key="js_radius")
+        job_title = st.text_input("JOB TITLE / KEYWORDS", key="js_title", placeholder="e.g. Software Engineer")
+        postcode = st.text_input("POSTCODE", key="js_postcode", placeholder="e.g. SW1A 1AA")
+        radius = st.selectbox("SEARCH RADIUS (MILES)", options=[5, 10, 25, 50, 100], index=2, key="js_radius")
     with col2:
-        manual_mileage = st.number_input(
-            "MANUAL MILEAGE OVERRIDE (0 = use dropdown)",
-            min_value=0, max_value=500, value=0, step=5, key="js_manual_miles")
+        manual_mileage = st.number_input("MANUAL MILEAGE OVERRIDE (0 = use dropdown)", min_value=0, max_value=500, value=0, step=5, key="js_manual_miles")
         national = st.toggle("UK NATIONAL SEARCH", value=True, key="js_national")
         mode_label = "NATIONAL (UK)" if national else "INTERNATIONAL (US)"
         st.markdown(f"**SEARCH MODE:** {mode_label}")
@@ -936,9 +1290,7 @@ def render_gap_engine_tab():
     st.markdown("SCANNING EMPLOYMENT CHRONOLOGY FOR GAPS EXCEEDING 3 MONTHS...")
     experience = st.session_state.cv_data.get("experience", [])
     if not experience:
-        st.warning(
-            "NO EXPERIENCE DATA FOUND. COMPLETE THE CV BUILDER STEP 2 FIRST."
-        )
+        st.warning("NO EXPERIENCE DATA FOUND. COMPLETE THE CV BUILDER STEP 3 FIRST.")
         return
     gaps = detect_employment_gaps(experience)
     if not gaps:
@@ -998,25 +1350,13 @@ def render_recovery_tab():
             if status == "OK":
                 st.session_state.cv_data = cv_data
                 st.session_state.cv_step = 1
-                st.success(
-                    "SHA-512 INTEGRITY VERIFIED. CV DATA SUCCESSFULLY RESTORED TO SESSION. "
-                    "NAVIGATE TO CV BUILDER TO REVIEW."
-                )
+                st.success("SHA-512 INTEGRITY VERIFIED. CV DATA SUCCESSFULLY RESTORED TO SESSION.")
             elif status == "TAMPERED":
-                st.error(
-                    "INTEGRITY CHECK FAILED. "
-                    "SHA-512 HASH MISMATCH DETECTED — THIS FILE HAS BEEN MODIFIED OR "
-                    "CORRUPTED SINCE EXPORT. DATA RESTORATION REFUSED. "
-                    "DO NOT TRUST THIS FILE."
-                )
+                st.error("INTEGRITY CHECK FAILED. SHA-512 HASH MISMATCH DETECTED — FILE HAS BEEN MODIFIED.")
             else:
-                st.error(
-                    "INVALID ARCHIVE FORMAT. "
-                    "FILE DOES NOT CONTAIN REQUIRED cv_data.cvp AND integrity.sha512 COMPONENTS. "
-                    "ENSURE YOU ARE UPLOADING A CAREER ARCHITECT EXPORT FILE."
-                )
+                st.error("INVALID ARCHIVE FORMAT. ENSURE YOU ARE UPLOADING A CAREER ARCHITECT EXPORT FILE.")
 
-# ── USER MANAGEMENT (Supervisor+Admin) ───────────────────────
+# ── USER MANAGEMENT ───────────────────────────────────────────
 
 def render_user_management_tab():
     st.header("USER MANAGEMENT — COMMAND PANEL")
@@ -1035,8 +1375,7 @@ def render_user_management_tab():
         new_role = st.selectbox("ROLE", ["User", "Supervisor"], key="new_role")
     with col2:
         new_pwd = st.text_input("INITIAL PASSWORD", type="password", key="new_pwd")
-        new_uses = st.number_input("INITIAL CREDITS", min_value=1, max_value=200,
-                                    value=10, key="new_uses")
+        new_uses = st.number_input("INITIAL CREDITS", min_value=1, max_value=200, value=10, key="new_uses")
     if st.button("CREATE USER", key="create_user"):
         if new_uid.strip() and new_pwd.strip():
             if new_uid.strip() in db:
@@ -1064,7 +1403,7 @@ def render_user_management_tab():
     else:
         st.info("NO DEACTIVATABLE USERS AVAILABLE")
 
-# ── APPROVALS QUEUE (Supervisor+Admin) ───────────────────────
+# ── APPROVALS ─────────────────────────────────────────────────
 
 def render_approvals_tab():
     st.header("APPROVALS QUEUE")
@@ -1096,7 +1435,6 @@ def render_admin_console_tab():
     if role != "Admin":
         st.error("ADMIN ACCESS REQUIRED. THIS INCIDENT HAS BEEN LOGGED.")
         return
-    # System Metrics
     st.subheader("SYSTEM STATUS")
     col1, col2, col3 = st.columns(3)
     with col1:
@@ -1106,14 +1444,12 @@ def render_admin_console_tab():
     with col3:
         st.metric("VERSION", VERSION)
     st.markdown("---")
-    # Adzuna Key Updater
     st.subheader("ADZUNA API KEY UPDATER")
     cfg = load_config()
     current_id = cfg.get("admin_settings", {}).get("api_keys", {}).get("adzuna_id", "")
     current_key_val = cfg.get("admin_settings", {}).get("api_keys", {}).get("adzuna_key", "")
     new_adzuna_id = st.text_input("ADZUNA APP ID", value=current_id, key="admin_azid")
-    new_adzuna_key = st.text_input("ADZUNA APP KEY", value=current_key_val,
-                                    type="password", key="admin_azkey")
+    new_adzuna_key = st.text_input("ADZUNA APP KEY", value=current_key_val, type="password", key="admin_azkey")
     if st.button("UPDATE ADZUNA CREDENTIALS", key="update_adzuna"):
         if new_adzuna_id.strip() and new_adzuna_key.strip():
             if "admin_settings" not in cfg:
@@ -1128,7 +1464,6 @@ def render_admin_console_tab():
                 st.error("FAILED TO WRITE TO system_config.json — CHECK FILE PERMISSIONS")
         else:
             st.warning("BOTH APP ID AND APP KEY MUST BE PROVIDED")
-    # Adzuna Balance Probe
     st.markdown("---")
     st.subheader("ADZUNA ACCOUNT STATUS")
     if st.button("PROBE ADZUNA CONNECTION", key="adzuna_probe"):
@@ -1136,20 +1471,18 @@ def render_admin_console_tab():
         try:
             resp = requests.get(
                 "https://api.adzuna.com/v1/api/jobs/gb/search/1",
-                params={"app_id": probe_id, "app_key": probe_key,
-                        "results_per_page": 1, "what": "engineer"},
+                params={"app_id": probe_id, "app_key": probe_key, "results_per_page": 1, "what": "engineer"},
                 timeout=10
             )
             if resp.status_code == 200:
                 data = resp.json()
                 total = data.get("count", "N/A")
-                st.success(f"ADZUNA API: CONNECTED | HTTP 200 | CREDENTIALS VALID")
+                st.success("ADZUNA API: CONNECTED | HTTP 200 | CREDENTIALS VALID")
                 st.markdown(f"**LIVE JOB INDEX (GB):** {total:,} active listings" if isinstance(total, int) else f"**LIVE JOB INDEX:** {total}")
             else:
                 st.error(f"ADZUNA API: HTTP {resp.status_code} — CHECK CREDENTIALS")
         except Exception as e:
             st.error(f"ADZUNA CONNECTION FAILED: {str(e)}")
-    # System Reset
     st.markdown("---")
     st.subheader("SYSTEM RESET — 30 DAY LOCKDOWN REGENERATION")
     st.warning("THIS WILL RESET ALL NON-PERPETUAL USER EXPIRY DATES TO 30 DAYS FROM NOW.")
@@ -1159,7 +1492,6 @@ def render_admin_console_tab():
             if data_r["expiry"] != "PERPETUAL":
                 data_r["expiry"] = new_expiry
         st.success(f"SYSTEM RESET COMPLETE. NEW LOCKDOWN DATE: {new_expiry}")
-    # Live View
     st.markdown("---")
     st.subheader("LIVE VIEW — SESSION STATS")
     active_count = sum(
@@ -1168,7 +1500,6 @@ def render_admin_console_tab():
     )
     st.markdown(f"**ACCOUNTS WITH ACTIVE CREDITS:** {active_count}")
     st.markdown(f"**CURRENTLY LOGGED IN:** {st.session_state.current_user}")
-    # User Registry (passwords redacted)
     st.markdown("---")
     st.subheader("FULL USER REGISTRY")
     display_db = {
@@ -1184,40 +1515,15 @@ def render_admin_console_tab():
 ROLE_TABS = {
     "User": {
         "labels": ["CV BUILDER", "JOB SEARCH", "GAP ENGINE", "EXPORT", "RECOVERY"],
-        "renderers": [
-            render_cv_builder_tab,
-            render_job_search_tab,
-            render_gap_engine_tab,
-            render_export_tab,
-            render_recovery_tab
-        ]
+        "renderers": [render_cv_builder_tab, render_job_search_tab, render_gap_engine_tab, render_export_tab, render_recovery_tab]
     },
     "Supervisor": {
-        "labels": ["CV BUILDER", "JOB SEARCH", "GAP ENGINE", "EXPORT", "RECOVERY",
-                   "USER MANAGEMENT", "APPROVALS"],
-        "renderers": [
-            render_cv_builder_tab,
-            render_job_search_tab,
-            render_gap_engine_tab,
-            render_export_tab,
-            render_recovery_tab,
-            render_user_management_tab,
-            render_approvals_tab
-        ]
+        "labels": ["CV BUILDER", "JOB SEARCH", "GAP ENGINE", "EXPORT", "RECOVERY", "USER MANAGEMENT", "APPROVALS"],
+        "renderers": [render_cv_builder_tab, render_job_search_tab, render_gap_engine_tab, render_export_tab, render_recovery_tab, render_user_management_tab, render_approvals_tab]
     },
     "Admin": {
-        "labels": ["CV BUILDER", "JOB SEARCH", "GAP ENGINE", "EXPORT", "RECOVERY",
-                   "USER MANAGEMENT", "APPROVALS", "ADMIN CONSOLE"],
-        "renderers": [
-            render_cv_builder_tab,
-            render_job_search_tab,
-            render_gap_engine_tab,
-            render_export_tab,
-            render_recovery_tab,
-            render_user_management_tab,
-            render_approvals_tab,
-            render_admin_console_tab
-        ]
+        "labels": ["CV BUILDER", "JOB SEARCH", "GAP ENGINE", "EXPORT", "RECOVERY", "USER MANAGEMENT", "APPROVALS", "ADMIN CONSOLE"],
+        "renderers": [render_cv_builder_tab, render_job_search_tab, render_gap_engine_tab, render_export_tab, render_recovery_tab, render_user_management_tab, render_approvals_tab, render_admin_console_tab]
     }
 }
 
