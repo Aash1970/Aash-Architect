@@ -13,7 +13,7 @@ from datetime import datetime, timedelta
 # ==============================================================
 VERSION = "FINAL MASTER STATUS"
 APP_TITLE = "CAREER ARCHITECT PRO"
-COPYRIGHT = "© 2026 POSE PERFECT LTD"
+COPYRIGHT = "© 2026 CAREER ARCHITECT"
 CVP_FILENAME = "cv_data.cvp"
 HASH_FILENAME = "integrity.sha512"
 CONFIG_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "system_config.json")
@@ -521,7 +521,7 @@ if not st.session_state.auth:
     )
     st.markdown(
         f'<p style="text-align:center; color:#39ff14; font-family:Courier New,monospace;">'
-        f'{VERSION} &nbsp;|&nbsp; POSE PERFECT LTD</p>',
+        f'{VERSION} &nbsp;|&nbsp; © 2026 CAREER ARCHITECT</p>',
         unsafe_allow_html=True
     )
     st.markdown("---")
