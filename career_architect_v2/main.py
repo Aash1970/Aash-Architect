@@ -1,6 +1,5 @@
 import streamlit as st
-import hashlib
-from datetime import datetime, timedelta
+from supabase import create_client, Client
 
 # ==============================================================
 # CONSTANTS
@@ -8,6 +7,13 @@ from datetime import datetime, timedelta
 APP_TITLE   = "CAREER ARCHITECT PRO"
 VERSION     = "v2.0.0 — MODULAR"
 COPYRIGHT   = "© 2026 CAREER ARCHITECT"
+
+# ==============================================================
+# SUPABASE CLIENT
+# ==============================================================
+SUPABASE_URL = "https://clvqqziqhdrfqtgasbat.supabase.co"
+SUPABASE_KEY = "sb_publishable_etCObCZdvHfD1qJRWCvbBA_k8jhLN26"
+supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 # ==============================================================
 # ROLE HIERARCHY
@@ -24,13 +30,6 @@ def role_gte(role_a: str, role_b: str) -> bool:
     return ROLE_HIERARCHY.get(role_a, 0) >= ROLE_HIERARCHY.get(role_b, 0)
 
 # ==============================================================
-# HELPERS
-# ==============================================================
-
-def get_hash(text: str) -> str:
-    return hashlib.sha512(text.strip().encode()).hexdigest()
-
-# ==============================================================
 # SESSION STATE INITIALISATION
 # ==============================================================
 
@@ -39,38 +38,12 @@ def _init_state():
         st.session_state.auth = False
     if "current_user" not in st.session_state:
         st.session_state.current_user = None
+    if "user_role" not in st.session_state:
+        st.session_state.user_role = "User"
     if "login_attempts" not in st.session_state:
         st.session_state.login_attempts = 0
     if "page" not in st.session_state:
         st.session_state.page = "cv_builder"
-    if "user_db" not in st.session_state:
-        lockdown_date = (datetime.now() + timedelta(days=30)).strftime("%Y-%m-%d")
-        st.session_state.user_db = {
-            "SystemAdmin": {
-                "pwd": get_hash("SystemAdmin2026"),
-                "role": "SystemAdmin",
-                "uses": "UNLIMITED",
-                "expiry": "PERPETUAL",
-            },
-            "Admin": {
-                "pwd": get_hash("PosePerfectLtd2026"),
-                "role": "Admin",
-                "uses": "UNLIMITED",
-                "expiry": "PERPETUAL",
-            },
-            "Coach": {
-                "pwd": get_hash("Coach2026"),
-                "role": "Coach",
-                "uses": 50,
-                "expiry": lockdown_date,
-            },
-            "User": {
-                "pwd": get_hash("User2026"),
-                "role": "User",
-                "uses": 10,
-                "expiry": lockdown_date,
-            },
-        }
 
 _init_state()
 
@@ -180,32 +153,55 @@ if not st.session_state.auth:
 
     col_l, col_c, col_r = st.columns([1, 2, 1])
     with col_c:
-        u_id  = st.text_input("SYSTEM ID",   placeholder="Enter your user ID")
-        u_key = st.text_input("ACCESS KEY",  placeholder="Enter your access key", type="password")
+        tab_login, tab_signup = st.tabs(["LOGIN", "SIGN UP"])
 
-        if st.button("UNLOCK ACCESS"):
-            db = st.session_state.user_db
-            if u_id in db and get_hash(u_key) == db[u_id]["pwd"]:
-                user_expiry = db[u_id]["expiry"]
-                if user_expiry != "PERPETUAL":
+        with tab_login:
+            login_email    = st.text_input("EMAIL",    placeholder="Enter your email",    key="login_email")
+            login_password = st.text_input("PASSWORD", placeholder="Enter your password", type="password", key="login_password")
+
+            if st.button("UNLOCK ACCESS", key="btn_login"):
+                if not login_email or not login_password:
+                    st.error("EMAIL AND PASSWORD ARE REQUIRED.")
+                else:
                     try:
-                        if datetime.strptime(user_expiry, "%Y-%m-%d") < datetime.now():
-                            st.error("ACCOUNT EXPIRED. CONTACT ADMINISTRATOR.")
-                            st.stop()
-                    except ValueError:
-                        pass
-                user_uses = db[u_id]["uses"]
-                if user_uses != "UNLIMITED" and isinstance(user_uses, int) and user_uses <= 0:
-                    st.error("CREDIT LIMIT REACHED. CONTACT ADMINISTRATOR.")
-                    st.stop()
-                st.session_state.auth         = True
-                st.session_state.current_user = u_id
-                st.session_state.login_attempts = 0
-                st.session_state.page         = "cv_builder"
-                st.rerun()
-            else:
-                st.session_state.login_attempts += 1
-                st.error(f"ACCESS DENIED — ATTEMPT {st.session_state.login_attempts}")
+                        response = supabase.auth.sign_in_with_password(
+                            {"email": login_email.strip(), "password": login_password}
+                        )
+                        if response.session:
+                            st.session_state.auth           = True
+                            st.session_state.current_user   = response.user.email
+                            st.session_state.user_role      = "User"
+                            st.session_state.login_attempts = 0
+                            st.session_state.page           = "cv_builder"
+                            st.rerun()
+                        else:
+                            st.session_state.login_attempts += 1
+                            st.error(f"ACCESS DENIED — ATTEMPT {st.session_state.login_attempts}")
+                    except Exception as e:
+                        st.session_state.login_attempts += 1
+                        st.error(f"ACCESS DENIED — ATTEMPT {st.session_state.login_attempts}")
+
+        with tab_signup:
+            signup_email    = st.text_input("EMAIL",            placeholder="Enter your email",        key="signup_email")
+            signup_password = st.text_input("PASSWORD",         placeholder="Choose a password",       type="password", key="signup_password")
+            signup_confirm  = st.text_input("CONFIRM PASSWORD", placeholder="Confirm your password",   type="password", key="signup_confirm")
+
+            if st.button("CREATE ACCOUNT", key="btn_signup"):
+                if not signup_email or not signup_password or not signup_confirm:
+                    st.error("ALL FIELDS ARE REQUIRED.")
+                elif signup_password != signup_confirm:
+                    st.error("PASSWORDS DO NOT MATCH.")
+                else:
+                    try:
+                        response = supabase.auth.sign_up(
+                            {"email": signup_email.strip(), "password": signup_password}
+                        )
+                        if response.user:
+                            st.success("ACCOUNT CREATED. CHECK YOUR EMAIL TO VERIFY, THEN LOG IN.")
+                        else:
+                            st.error("SIGN UP FAILED. PLEASE TRY AGAIN.")
+                    except Exception as e:
+                        st.error(f"SIGN UP FAILED — {str(e)}")
 
     st.markdown(
         f'<div style="position:fixed;bottom:10px;width:100%;text-align:center;'
@@ -219,9 +215,8 @@ if not st.session_state.auth:
 # AUTHENTICATED ZONE
 # ==============================================================
 
-u      = st.session_state.current_user
-u_data = st.session_state.user_db[u]
-role   = u_data["role"]
+u    = st.session_state.current_user
+role = st.session_state.user_role
 
 # ==============================================================
 # ROLE-BASED NAVIGATION MAP
@@ -243,31 +238,8 @@ def _user_pages() -> list:
 # ==============================================================
 
 with st.sidebar:
-    st.markdown(f"### SYSTEM ID: {u}")
+    st.markdown(f"### {u}")
     st.markdown(f"**ROLE:** {role}")
-    st.markdown("---")
-
-    uses   = u_data["uses"]
-    expiry = u_data["expiry"]
-
-    if uses == "UNLIMITED":
-        st.markdown("**CREDITS:** ∞ UNLIMITED")
-    else:
-        st.markdown(f"**CREDITS REMAINING:** {uses}")
-
-    if expiry == "PERPETUAL":
-        st.markdown("**ACCESS:** PERPETUAL")
-    else:
-        try:
-            expiry_dt      = datetime.strptime(expiry, "%Y-%m-%d")
-            days_remaining = (expiry_dt - datetime.now()).days
-            if days_remaining <= 7:
-                st.warning(f"EXPIRY: {expiry} ({days_remaining} DAYS REMAINING)")
-            else:
-                st.markdown(f"**EXPIRY:** {expiry}")
-        except ValueError:
-            st.markdown(f"**EXPIRY:** {expiry}")
-
     st.markdown("---")
     st.markdown("**NAVIGATION**")
 
@@ -279,8 +251,13 @@ with st.sidebar:
 
     st.markdown("---")
     if st.button("LOGOUT"):
+        try:
+            supabase.auth.sign_out()
+        except Exception:
+            pass
         st.session_state.auth         = False
         st.session_state.current_user = None
+        st.session_state.user_role    = "User"
         st.session_state.page         = "cv_builder"
         st.rerun()
 
