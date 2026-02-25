@@ -1,0 +1,15 @@
+{
+  "id": "jd-sample-001",
+  "title": "Senior Python Backend Engineer",
+  "company": "SampleTech Ltd",
+  "location": "London, UK (Hybrid)",
+  "posted_date": "2026-02-01",
+  "description": "We are looking for a Senior Python Backend Engineer to join our growing engineering team. You will design and build scalable, high-performance REST APIs and microservices that power our SaaS platform.\n\nKey Responsibilities:\n- Design, develop, and maintain Python-based backend services using FastAPI or Django\n- Build and optimise RESTful APIs and GraphQL endpoints\n- Architect microservices with Docker and Kubernetes in a cloud environment (AWS or GCP)\n- Implement CI/CD pipelines using GitHub Actions or Jenkins\n- Work closely with frontend engineers, product managers, and data teams\n- Mentor junior and mid-level engineers\n- Participate in system design and architecture reviews\n- Write clean, testable code with full unit and integration test coverage\n- Manage PostgreSQL and Redis databases\n- Implement security best practices including OAuth2, JWT, and data encryption\n\nRequired Skills:\n- 5+ years of Python development experience\n- Strong experience with FastAPI or Django REST Framework\n- PostgreSQL database design and optimisation\n- Docker and Kubernetes containerisation\n- AWS or GCP cloud infrastructure\n- CI/CD pipeline experience (GitHub Actions, Jenkins)\n- Git version control and code review experience\n- Microservices and distributed systems design\n- REST API design principles\n- Unit testing and TDD methodology\n\nNice to Have:\n- Redis caching experience\n- Celery task queues\n- GraphQL API experience\n- Terraform infrastructure as code\n- Experience with Elasticsearch\n- Open source contributions\n\nBenefits:\n- Competitive salary £90,000 - £120,000\n- Remote-first culture with flexible hours\n- 30 days annual leave\n- Private health insurance\n- £2,000 annual learning budget\n- Latest MacBook Pro\n- Team off-sites twice per year",
+  "skills_required": [
+    "Python", "FastAPI", "Django", "REST API", "PostgreSQL", "Docker",
+    "Kubernetes", "AWS", "GCP", "CI/CD", "GitHub Actions", "microservices",
+    "unit testing", "TDD", "Redis", "Git", "OAuth2", "JWT"
+  ],
+  "experience_years_required": 5,
+  "role_level": "Senior"
+}

@@ -1,4 +1,18 @@
+# CV SaaS Platform — Production Dependencies
+# Copyright © 2026 Pose Perfect Ltd
+
+# ── Core UI (temporary — platform will migrate to FastAPI/React) ──────────────
 streamlit>=1.32.0
+
+# ── Database / Backend ────────────────────────────────────────────────────────
 supabase>=2.3.0
+
+# ── Cryptography (AES-256-GCM encryption) ────────────────────────────────────
 cryptography>=42.0.0
+
+# ── HTTP ──────────────────────────────────────────────────────────────────────
 requests>=2.31.0
+
+# ── Testing ───────────────────────────────────────────────────────────────────
+pytest>=8.0.0
+pytest-cov>=4.1.0
