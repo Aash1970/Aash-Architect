@@ -1,0 +1,297 @@
+[
+  {
+    "cv_id": "seed-cv-001",
+    "user_id": "seed-user-free-001",
+    "title": "Alice Freeman - Junior Developer CV",
+    "version": 2,
+    "tier": "Free",
+    "is_deleted": false,
+    "created_at": "2026-01-05T10:00:00+00:00",
+    "updated_at": "2026-01-10T14:30:00+00:00",
+    "assigned_coach_id": null,
+    "personal_info": {
+      "full_name": "Alice Freeman",
+      "email": "alice.free@example.com",
+      "mobile": "+44 7700 100001",
+      "location": "Manchester, UK",
+      "linkedin": "https://linkedin.com/in/alicefreeman",
+      "website": null,
+      "summary": "Recent computer science graduate with a passion for web development. Strong foundation in Python, JavaScript, and SQL. Eager to contribute to a collaborative team environment."
+    },
+    "work_experience": [
+      {
+        "company": "WebAgency Ltd",
+        "position": "Junior Web Developer (Internship)",
+        "start_date": "2025-06-01",
+        "end_date": "2025-12-31",
+        "is_current": false,
+        "description": "Developed responsive web pages using HTML, CSS, and JavaScript. Assisted senior developers with Python Django backend tasks. Participated in daily scrum meetings.",
+        "achievements": [
+          "Delivered 3 client websites ahead of schedule",
+          "Reduced page load time by 15% through image optimisation"
+        ]
+      }
+    ],
+    "education": [
+      {
+        "institution": "Manchester Metropolitan University",
+        "degree": "BSc",
+        "field_of_study": "Computer Science",
+        "start_date": "2021-09-01",
+        "end_date": "2025-06-30",
+        "is_current": false,
+        "grade": "2:1 (Upper Second Class)"
+      }
+    ],
+    "skills": [
+      {"name": "Python", "level": "Intermediate", "category": "Programming"},
+      {"name": "JavaScript", "level": "Intermediate", "category": "Programming"},
+      {"name": "HTML/CSS", "level": "Advanced", "category": "Frontend"},
+      {"name": "SQL", "level": "Beginner", "category": "Database"},
+      {"name": "Git", "level": "Intermediate", "category": "Tools"}
+    ],
+    "languages": [
+      {"name": "English", "proficiency": "Native"},
+      {"name": "Spanish", "proficiency": "A2"}
+    ],
+    "certifications": [],
+    "coach_notes": null,
+    "ats_score": null
+  },
+  {
+    "cv_id": "seed-cv-002",
+    "user_id": "seed-user-premium-001",
+    "title": "Bob Premium - Senior Data Scientist CV",
+    "version": 5,
+    "tier": "Premium",
+    "is_deleted": false,
+    "created_at": "2026-01-02T11:00:00+00:00",
+    "updated_at": "2026-02-01T09:00:00+00:00",
+    "assigned_coach_id": "seed-coach-001",
+    "personal_info": {
+      "full_name": "Bob Premium",
+      "email": "bob.premium@example.com",
+      "mobile": "+1 555 200 0002",
+      "location": "London, UK",
+      "linkedin": "https://linkedin.com/in/bobpremium",
+      "website": "https://bobpremium.dev",
+      "summary": "Senior Data Scientist with 7+ years of experience in machine learning, NLP, and statistical modelling. Proven track record of delivering end-to-end ML pipelines in production at scale. Passionate about translating complex data into actionable business insights."
+    },
+    "work_experience": [
+      {
+        "company": "FinTech Global",
+        "position": "Senior Data Scientist",
+        "start_date": "2021-03-01",
+        "end_date": null,
+        "is_current": true,
+        "description": "Lead ML pipeline development for credit risk modelling using Python, scikit-learn, and XGBoost. Manage a team of 4 junior data scientists. Deploy models to production using AWS SageMaker and Docker.",
+        "achievements": [
+          "Reduced model inference time by 35% through feature selection optimisation",
+          "Built fraud detection system achieving 97.2% precision",
+          "Mentored 4 junior scientists, all promoted within 18 months"
+        ]
+      },
+      {
+        "company": "DataViz Consulting",
+        "position": "Data Scientist",
+        "start_date": "2018-06-01",
+        "end_date": "2021-02-28",
+        "is_current": false,
+        "description": "Developed NLP models for sentiment analysis and customer churn prediction. Built data visualisation dashboards using Tableau and Power BI. Presented insights to C-suite stakeholders.",
+        "achievements": [
+          "Improved customer retention by 18% through churn prediction model",
+          "Automated reporting saving 20 hours per week"
+        ]
+      },
+      {
+        "company": "Analytics Startup",
+        "position": "Junior Data Analyst",
+        "start_date": "2017-01-01",
+        "end_date": "2018-05-31",
+        "is_current": false,
+        "description": "Data cleaning, exploratory analysis, and report generation using Python pandas and Matplotlib.",
+        "achievements": []
+      }
+    ],
+    "education": [
+      {
+        "institution": "Imperial College London",
+        "degree": "MSc",
+        "field_of_study": "Statistics and Machine Learning",
+        "start_date": "2015-09-01",
+        "end_date": "2016-09-30",
+        "is_current": false,
+        "grade": "Distinction"
+      },
+      {
+        "institution": "University of Birmingham",
+        "degree": "BSc",
+        "field_of_study": "Mathematics",
+        "start_date": "2012-09-01",
+        "end_date": "2015-06-30",
+        "is_current": false,
+        "grade": "First Class Honours"
+      }
+    ],
+    "skills": [
+      {"name": "Python", "level": "Expert", "category": "Programming"},
+      {"name": "Machine Learning", "level": "Expert", "category": "Data Science"},
+      {"name": "scikit-learn", "level": "Expert", "category": "ML Libraries"},
+      {"name": "XGBoost", "level": "Advanced", "category": "ML Libraries"},
+      {"name": "TensorFlow", "level": "Advanced", "category": "Deep Learning"},
+      {"name": "SQL", "level": "Advanced", "category": "Database"},
+      {"name": "AWS SageMaker", "level": "Advanced", "category": "Cloud"},
+      {"name": "Docker", "level": "Intermediate", "category": "DevOps"},
+      {"name": "Tableau", "level": "Advanced", "category": "Visualisation"},
+      {"name": "NLP", "level": "Advanced", "category": "Data Science"}
+    ],
+    "languages": [
+      {"name": "English", "proficiency": "Native"},
+      {"name": "French", "proficiency": "B1"}
+    ],
+    "certifications": [
+      {
+        "name": "AWS Certified Machine Learning Specialty",
+        "issuer": "Amazon Web Services",
+        "issue_date": "2023-05-15",
+        "expiry_date": "2026-05-15",
+        "credential_id": "AWS-ML-12345",
+        "url": "https://aws.amazon.com/certification"
+      },
+      {
+        "name": "Google Professional Data Engineer",
+        "issuer": "Google Cloud",
+        "issue_date": "2022-10-01",
+        "expiry_date": "2025-10-01",
+        "credential_id": "GCP-DE-67890",
+        "url": null
+      }
+    ],
+    "coach_notes": "Bob has an excellent profile. Recommend expanding the summary to highlight leadership experience more prominently.",
+    "ats_score": {
+      "overall_score": 87.3,
+      "keyword_match_rate": 92.1,
+      "completeness_score": 95.0,
+      "format_score": 88.0,
+      "tier_used": "Premium"
+    }
+  },
+  {
+    "cv_id": "seed-cv-003",
+    "user_id": "seed-user-enterprise-001",
+    "title": "Carol Enterprise - Engineering Director CV",
+    "version": 8,
+    "tier": "Enterprise",
+    "is_deleted": false,
+    "created_at": "2025-12-01T08:00:00+00:00",
+    "updated_at": "2026-02-15T16:00:00+00:00",
+    "assigned_coach_id": "seed-coach-001",
+    "personal_info": {
+      "full_name": "Carol Enterprise",
+      "email": "carol.enterprise@example.com",
+      "mobile": "+49 30 1234 5678",
+      "location": "Berlin, Germany",
+      "linkedin": "https://linkedin.com/in/carolenterprise",
+      "website": "https://carolenterprise.com",
+      "summary": "Engineering Director with 15+ years of experience leading global software engineering teams. Expert in cloud-native architectures, platform engineering, and digital transformation. Track record of scaling engineering organisations from startup to enterprise. Fluent in English, German, and French."
+    },
+    "work_experience": [
+      {
+        "company": "GlobalTech AG",
+        "position": "Director of Engineering",
+        "start_date": "2020-01-01",
+        "end_date": null,
+        "is_current": true,
+        "description": "Lead 120+ engineers across 8 distributed teams in 5 countries. Own the full-stack platform architecture. Drive cloud migration from on-premise to AWS. Define engineering OKRs and hiring strategy.",
+        "achievements": [
+          "Reduced infrastructure costs by 40% through AWS migration",
+          "Scaled engineering team from 40 to 120 in 3 years",
+          "Improved deployment frequency from monthly to daily (DevOps transformation)",
+          "Zero critical production incidents over 18 months"
+        ]
+      },
+      {
+        "company": "ScaleUp GmbH",
+        "position": "VP Engineering",
+        "start_date": "2016-03-01",
+        "end_date": "2019-12-31",
+        "is_current": false,
+        "description": "Built engineering function from 5 to 45 engineers. Implemented microservices architecture. Led technical due diligence for Series B round.",
+        "achievements": [
+          "Delivered IPO-ready technical infrastructure",
+          "Reduced time-to-market by 60%"
+        ]
+      },
+      {
+        "company": "StartupXX",
+        "position": "Senior Software Architect",
+        "start_date": "2013-01-01",
+        "end_date": "2016-02-28",
+        "is_current": false,
+        "description": "Designed and implemented microservices platform. Mentored 10 engineers.",
+        "achievements": []
+      }
+    ],
+    "education": [
+      {
+        "institution": "Technische Universität Berlin",
+        "degree": "MSc",
+        "field_of_study": "Computer Science",
+        "start_date": "2007-10-01",
+        "end_date": "2009-09-30",
+        "is_current": false,
+        "grade": "Sehr gut (1.2)"
+      },
+      {
+        "institution": "Universität Heidelberg",
+        "degree": "BSc",
+        "field_of_study": "Software Engineering",
+        "start_date": "2004-10-01",
+        "end_date": "2007-09-30",
+        "is_current": false,
+        "grade": "Gut (2.0)"
+      }
+    ],
+    "skills": [
+      {"name": "Cloud Architecture", "level": "Expert", "category": "Architecture"},
+      {"name": "AWS", "level": "Expert", "category": "Cloud"},
+      {"name": "Kubernetes", "level": "Expert", "category": "DevOps"},
+      {"name": "Engineering Leadership", "level": "Expert", "category": "Management"},
+      {"name": "Microservices", "level": "Expert", "category": "Architecture"},
+      {"name": "Python", "level": "Advanced", "category": "Programming"},
+      {"name": "Terraform", "level": "Advanced", "category": "DevOps"},
+      {"name": "Strategic Planning", "level": "Expert", "category": "Leadership"}
+    ],
+    "languages": [
+      {"name": "German", "proficiency": "Native"},
+      {"name": "English", "proficiency": "C2"},
+      {"name": "French", "proficiency": "C1"}
+    ],
+    "certifications": [
+      {
+        "name": "AWS Solutions Architect Professional",
+        "issuer": "Amazon Web Services",
+        "issue_date": "2021-09-01",
+        "expiry_date": "2024-09-01",
+        "credential_id": "AWS-SAP-99999",
+        "url": null
+      },
+      {
+        "name": "Certified Kubernetes Administrator",
+        "issuer": "Cloud Native Computing Foundation",
+        "issue_date": "2022-04-01",
+        "expiry_date": "2025-04-01",
+        "credential_id": "CKA-12345",
+        "url": null
+      }
+    ],
+    "coach_notes": "Carol's profile is outstanding. Focus on quantifying the strategic impact of the Series B technical due diligence work.",
+    "ats_score": {
+      "overall_score": 94.1,
+      "keyword_match_rate": 96.8,
+      "completeness_score": 98.0,
+      "format_score": 95.0,
+      "tier_used": "Enterprise"
+    }
+  }
+]
