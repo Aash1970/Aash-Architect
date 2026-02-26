@@ -122,8 +122,8 @@ async def update_cv(
     current_user: CurrentUser = Depends(get_current_user),
     cv_svc: CVService = Depends(get_cv_service),
 ) -> CVResponse:
-    # Drop keys not provided by caller so partial updates work correctly
-    updates = {k: v for k, v in body.model_dump().items() if v is not None}
+    # Only include fields explicitly sent by the caller (preserves False/0/"")
+    updates = body.model_dump(exclude_unset=True)
     try:
         updated = cv_svc.update_cv(
             cv_id=cv_id,

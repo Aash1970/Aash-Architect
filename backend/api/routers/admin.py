@@ -85,7 +85,7 @@ async def update_user(
     current_user: CurrentUser = Depends(get_current_user),
     admin_svc: AdminService = Depends(get_admin_service),
 ) -> DataResponse:
-    updates = {k: v for k, v in body.model_dump().items() if v is not None}
+    updates = body.model_dump(exclude_unset=True)
     if not updates:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

@@ -10,6 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.services.role_service import PermissionDeniedError, RoleService
 from app.services.tier_service import TierService
+from app.tier.tier_rules import VALID_TIERS
 from backend.api.deps import (
     CurrentUser,
     get_current_user,
@@ -19,8 +20,6 @@ from backend.api.deps import (
 from backend.api.schemas.tier import TierLimitsResponse
 
 router = APIRouter()
-
-_VALID_TIERS = {"Free", "Premium", "Enterprise"}
 
 
 @router.get(
@@ -52,10 +51,10 @@ async def tier_limits_by_name(
     except PermissionDeniedError as exc:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc))
 
-    if tier not in _VALID_TIERS:
+    if tier not in VALID_TIERS:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Unknown tier '{tier}'. Valid tiers: {sorted(_VALID_TIERS)}",
+            detail=f"Unknown tier '{tier}'. Valid tiers: {sorted(VALID_TIERS)}",
         )
 
     summary = tier_svc.get_limits_summary(tier)

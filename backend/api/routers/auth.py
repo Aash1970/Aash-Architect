@@ -9,10 +9,12 @@ PUT   /auth/change-password
 """
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi.security import HTTPBearer
 
 from app.services.auth_service import AuthError, AuthService
 from backend.api.deps import CurrentUser, get_auth_service, get_current_user
+from backend.api.middleware.auth import register_local_token, revoke_local_token
 from backend.api.schemas.auth import (
     ChangePasswordRequest,
     LoginRequest,
@@ -79,6 +81,11 @@ async def login(
             detail=str(exc),
             headers={"WWW-Authenticate": "Bearer"},
         )
+    # Register local-mode tokens so the auth middleware can verify them.
+    # No-op when Supabase is configured (token is a real JWT, not "local-token-*").
+    token = user.access_token or ""
+    if token.startswith("local-token-"):
+        register_local_token(token, user.user_id)
     return LoginResponse(user=_user_response(user.to_dict()))
 
 
@@ -88,10 +95,15 @@ async def login(
     summary="Invalidate the current session",
 )
 async def logout(
+    request: Request,
     current_user: CurrentUser = Depends(get_current_user),
     auth_svc: AuthService = Depends(get_auth_service),
 ) -> MessageResponse:
     auth_svc.logout(current_user.user_id)
+    # Revoke local-mode token from the in-memory registry if present.
+    auth_header = request.headers.get("Authorization", "")
+    if auth_header.startswith("Bearer local-token-"):
+        revoke_local_token(auth_header[len("Bearer "):])
     return MessageResponse(message="Logged out successfully.")
 
 

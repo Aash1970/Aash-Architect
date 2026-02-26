@@ -17,7 +17,7 @@ a 500 configuration error so misconfiguration is immediately visible.
 from __future__ import annotations
 
 import os
-from typing import Optional
+from typing import Dict, Optional
 
 from jose import ExpiredSignatureError, JWTError, jwt
 from jose.exceptions import JWKError
@@ -28,6 +28,21 @@ _PUBLIC_KEY = os.environ.get("SUPABASE_JWT_PUBLIC_KEY", "")
 
 # For RS256 the signing key is the public key; for HS256 it is the shared secret.
 _SIGNING_KEY: Optional[str] = _PUBLIC_KEY if _ALGORITHM == "RS256" else _SECRET
+
+# ── Local-mode token registry ─────────────────────────────────────────────────
+# Maps "local-token-<hex>" → user_id for dev/test mode only.
+# This is never populated when Supabase is configured (tokens are real JWTs).
+_local_token_registry: Dict[str, str] = {}
+
+
+def register_local_token(token: str, user_id: str) -> None:
+    """Store a local-mode token so subsequent requests can be verified."""
+    _local_token_registry[token] = user_id
+
+
+def revoke_local_token(token: str) -> None:
+    """Remove a local-mode token (e.g. on logout)."""
+    _local_token_registry.pop(token, None)
 
 
 class JWTConfigurationError(RuntimeError):
@@ -46,9 +61,24 @@ def verify_token(token: str) -> dict:
     """
     Decode and verify a JWT.
 
+    For local/test mode (no Supabase), tokens issued by AuthService start with
+    "local-token-" and are verified against the in-memory registry populated at
+    login time.  This branch is never reached when SUPABASE_JWT_SECRET is set
+    and real JWTs are in use.
+
     Returns the full claims payload dict on success.
     Raises JWTExpiredError, JWTInvalidError, or JWTConfigurationError.
     """
+    # ── Local-mode bridge ─────────────────────────────────────────────────────
+    if token.startswith("local-token-"):
+        user_id = _local_token_registry.get(token)
+        if not user_id:
+            raise JWTInvalidError(
+                "Local token not recognised. Please log in again."
+            )
+        return {"sub": user_id}
+
+    # ── Supabase JWT path ─────────────────────────────────────────────────────
     if not _SIGNING_KEY:
         raise JWTConfigurationError(
             "JWT signing key not configured. "
