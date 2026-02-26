@@ -51,6 +51,8 @@ class DataService:
             "cv_versions": [],
             "export_logs": [],
             "coach_notes": [],
+            "consent_records": [],
+            "drafts": [],
         }
 
     def _init_supabase(self):
@@ -474,3 +476,112 @@ class DataService:
             "users_by_role": role_counts,
             "users_by_tier": tier_counts,
         }
+
+    # ── Consent records ───────────────────────────────────────────────────────
+
+    def save_consent_record(self, record: Dict[str, Any]) -> Dict[str, Any]:
+        """Appends an immutable consent record (append-only log)."""
+        if self._use_supabase:
+            try:
+                result = self._client.table("consent_records").insert(record).execute()
+                return result.data[0] if result.data else record
+            except Exception as exc:
+                raise DataServiceError(f"save_consent_record failed: {exc}") from exc
+
+        self._mem_store["consent_records"].append(record)
+        return record
+
+    def get_consent_records(self, user_id: str) -> List[Dict[str, Any]]:
+        """Returns all consent records for a user, oldest first."""
+        if self._use_supabase:
+            try:
+                result = (
+                    self._client.table("consent_records")
+                    .select("*")
+                    .eq("user_id", user_id)
+                    .order("recorded_at")
+                    .execute()
+                )
+                return result.data or []
+            except Exception as exc:
+                raise DataServiceError(f"get_consent_records failed: {exc}") from exc
+
+        records = [r for r in self._mem_store["consent_records"] if r["user_id"] == user_id]
+        return sorted(records, key=lambda r: r.get("recorded_at", ""))
+
+    def delete_consent_records(self, user_id: str) -> None:
+        """Hard-deletes all consent records for a user (GDPR erasure only)."""
+        if self._use_supabase:
+            try:
+                self._client.table("consent_records").delete().eq("user_id", user_id).execute()
+                return
+            except Exception as exc:
+                raise DataServiceError(f"delete_consent_records failed: {exc}") from exc
+
+        self._mem_store["consent_records"] = [
+            r for r in self._mem_store["consent_records"] if r["user_id"] != user_id
+        ]
+
+    # ── Draft autosave ────────────────────────────────────────────────────────
+
+    def upsert_draft(self, draft: Dict[str, Any]) -> Dict[str, Any]:
+        """Creates or replaces the draft for a user + cv_id pair."""
+        user_id = draft["user_id"]
+        cv_id = draft.get("cv_id")
+
+        if self._use_supabase:
+            try:
+                result = self._client.table("drafts").upsert(draft).execute()
+                return result.data[0] if result.data else draft
+            except Exception as exc:
+                raise DataServiceError(f"upsert_draft failed: {exc}") from exc
+
+        self._mem_store["drafts"] = [
+            d for d in self._mem_store["drafts"]
+            if not (d["user_id"] == user_id and d.get("cv_id") == cv_id)
+        ]
+        self._mem_store["drafts"].append(draft)
+        return draft
+
+    def get_draft(self, user_id: str, cv_id: Optional[str] = None) -> Optional[Dict[str, Any]]:
+        """Returns the current draft for a user + cv_id, or None."""
+        if self._use_supabase:
+            try:
+                query = self._client.table("drafts").select("*").eq("user_id", user_id)
+                if cv_id:
+                    query = query.eq("cv_id", cv_id)
+                else:
+                    query = query.is_("cv_id", "null")
+                result = query.single().execute()
+                return result.data
+            except Exception:
+                return None
+
+        return next(
+            (
+                d for d in self._mem_store["drafts"]
+                if d["user_id"] == user_id and d.get("cv_id") == cv_id
+            ),
+            None,
+        )
+
+    def delete_draft(self, user_id: str, cv_id: Optional[str] = None) -> bool:
+        """Deletes the draft for a user + cv_id. Returns True if found."""
+        if self._use_supabase:
+            try:
+                query = self._client.table("drafts").delete().eq("user_id", user_id)
+                if cv_id:
+                    query = query.eq("cv_id", cv_id)
+                else:
+                    query = query.is_("cv_id", "null")
+                query.execute()
+                return True
+            except Exception:
+                return False
+
+        before = len(self._mem_store["drafts"])
+        self._mem_store["drafts"] = [
+            d for d in self._mem_store["drafts"]
+            if not (d["user_id"] == user_id and d.get("cv_id") == cv_id)
+        ]
+        return len(self._mem_store["drafts"]) < before

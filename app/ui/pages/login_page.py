@@ -1,11 +1,10 @@
 """
 Login / Registration Page — Streamlit UI only.
 Calls AuthService for all auth operations.
-No business logic here.
+No business logic here. All user-visible strings via t().
 """
 
 import streamlit as st
-from typing import Optional
 
 from app.i18n import t, get_supported_languages
 from app.ui.state import (
@@ -22,7 +21,6 @@ def render_login_page(auth_service) -> None:
     """
     lang = get_language()
 
-    # Language selector at the top
     _render_language_selector(lang)
 
     st.markdown(
@@ -98,7 +96,6 @@ def _render_login_form(auth_service, lang: str) -> None:
             return
 
         try:
-            from app.services.auth_service import AuthError
             user = auth_service.login(email.strip(), password)
             set_authenticated_user(
                 user_id=user.user_id,
@@ -112,7 +109,7 @@ def _render_login_form(auth_service, lang: str) -> None:
             navigate_to("cv_list")
             set_flash(t("msg_login_success", lang), "success")
             st.rerun()
-        except Exception as exc:
+        except Exception:
             st.error(t("msg_login_failed", lang))
 
 
@@ -145,7 +142,9 @@ def _render_register_form(auth_service, lang: str) -> None:
         if not email:
             errors.append(f"{t('label_email', lang)}: {t('err_required', lang)}")
         if not password or len(password) < 8:
-            errors.append(f"{t('label_password', lang)}: must be at least 8 characters.")
+            errors.append(
+                f"{t('label_password', lang)}: {t('err_password_min_length', lang)}"
+            )
 
         if errors:
             for e in errors:
@@ -153,12 +152,12 @@ def _render_register_form(auth_service, lang: str) -> None:
             return
 
         try:
-            user = auth_service.register(
+            auth_service.register(
                 email=email.strip(),
                 password=password,
                 full_name=full_name.strip(),
             )
-            set_flash(t("msg_login_success", lang), "success")
-            st.info("Registration successful! Please log in.")
+            set_flash(t("msg_register_success", lang), "success")
+            st.rerun()
         except Exception as exc:
             st.error(str(exc))
