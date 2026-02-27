@@ -13,6 +13,9 @@ from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from app.admin.admin_service import AdminService
+from app.drafts.draft_service import DraftService
+from app.gdpr.consent import ConsentService
+from app.gdpr.erasure import ErasureService
 from app.services.ats_service import ATSService
 from app.services.auth_service import AuthService
 from app.services.cv_service import CVService
@@ -59,6 +62,18 @@ def get_ats_service(request: Request) -> ATSService:
 
 def get_admin_service(request: Request) -> AdminService:
     return request.app.state.admin_service
+
+
+def get_consent_service(request: Request) -> ConsentService:
+    return request.app.state.consent_service
+
+
+def get_erasure_service(request: Request) -> ErasureService:
+    return request.app.state.erasure_service
+
+
+def get_draft_service(request: Request) -> DraftService:
+    return request.app.state.draft_service
 
 
 # ── Authenticated user context ────────────────────────────────────────────────

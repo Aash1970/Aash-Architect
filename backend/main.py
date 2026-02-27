@@ -25,6 +25,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.admin.admin_service import AdminService
+from app.drafts.draft_service import DraftService
+from app.gdpr.consent import ConsentService
+from app.gdpr.erasure import ErasureService
 from app.lifecycle.retention import RetentionService
 from app.lifecycle.versioning import VersioningService
 from app.logging.logger import get_logger
@@ -37,7 +40,7 @@ from app.services.role_service import RoleService
 from app.services.tier_service import TierService
 
 from backend.api.middleware.logging import StructuredLoggingMiddleware
-from backend.api.routers import admin, ats, auth, cv, tier
+from backend.api.routers import admin, ats, auth, cv, drafts, gdpr, tier
 
 _VERSION = "3.0.0"
 _logger = get_logger("backend.main")
@@ -60,6 +63,9 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     auth_svc = AuthService(ds)
     admin_svc = AdminService(ds, rs, ret)
     ats_svc = ATSService(cv_svc, ts)
+    consent_svc = ConsentService(ds)
+    erasure_svc = ErasureService(ds, rs)
+    draft_svc = DraftService(ds)
 
     app.state.data_service = ds
     app.state.auth_service = auth_svc
@@ -68,6 +74,9 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     app.state.tier_service = ts
     app.state.ats_service = ats_svc
     app.state.admin_service = admin_svc
+    app.state.consent_service = consent_svc
+    app.state.erasure_service = erasure_svc
+    app.state.draft_service = draft_svc
 
     _logger.info("Career Architect Pro backend v%s started", _VERSION)
     yield
@@ -112,11 +121,13 @@ def create_app() -> FastAPI:
     app.add_middleware(StructuredLoggingMiddleware)
 
     # ── Domain routers ────────────────────────────────────────────────────────
-    app.include_router(auth.router, prefix="/auth", tags=["auth"])
-    app.include_router(cv.router,   prefix="/cv",   tags=["cv"])
-    app.include_router(ats.router,  prefix="/ats",  tags=["ats"])
-    app.include_router(tier.router, prefix="/tier", tags=["tier"])
-    app.include_router(admin.router, prefix="/admin", tags=["admin"])
+    app.include_router(auth.router,   prefix="/auth",   tags=["auth"])
+    app.include_router(cv.router,     prefix="/cv",     tags=["cv"])
+    app.include_router(ats.router,    prefix="/ats",    tags=["ats"])
+    app.include_router(tier.router,   prefix="/tier",   tags=["tier"])
+    app.include_router(admin.router,  prefix="/admin",  tags=["admin"])
+    app.include_router(gdpr.router,   prefix="/gdpr",   tags=["gdpr"])
+    app.include_router(drafts.router, prefix="/drafts", tags=["drafts"])
 
     # ── System endpoints ──────────────────────────────────────────────────────
     @app.get("/health", tags=["system"], summary="Liveness check")
