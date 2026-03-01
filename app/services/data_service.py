@@ -51,6 +51,10 @@ class DataService:
             "cv_versions": [],
             "export_logs": [],
             "coach_notes": [],
+            "consent_records": [],
+            "drafts": [],
+            "subscriptions": [],
+
         }
 
     def _init_supabase(self):
@@ -174,6 +178,96 @@ class DataService:
             return True
         except DataServiceError:
             return False
+    # ── Subscription operations ──────────────────────────────────────────────
+
+    def create_subscription(self, sub_data: Dict[str, Any]) -> Dict[str, Any]:
+        if "subscription_id" not in sub_data:
+            sub_data["subscription_id"] = str(uuid.uuid4())
+        sub_data.setdefault("created_at", self._now())
+        sub_data.setdefault("updated_at", self._now())
+    
+        if self._use_supabase:
+            try:
+                result = (
+                    self._client.table("subscriptions")
+                    .insert(sub_data)
+                    .execute()
+                )
+                return result.data[0]
+            except Exception as exc:
+                raise DataServiceError(f"create_subscription failed: {exc}") from exc
+    
+        self._mem_store["subscriptions"].append(sub_data)
+        return sub_data
+    
+    
+    def get_subscription_by_user_id(self, user_id: str) -> Optional[Dict[str, Any]]:
+        if self._use_supabase:
+            try:
+                result = (
+                    self._client.table("subscriptions")
+                    .select("*")
+                    .eq("user_id", user_id)
+                    .single()
+                    .execute()
+                )
+                return result.data
+            except Exception:
+                return None
+
+        return next(
+            (
+                s for s in self._mem_store["subscriptions"] if s["user_id"] == user_id
+            ),
+            None
+        )
+    
+    
+    def get_subscription_by_stripe_id(self, stripe_subscription_id: str) -> Optional[Dict[str, Any]]:
+        if self._use_supabase:
+            try:
+                result = (
+                    self._client.table("subscriptions")
+                    .select("*")
+                    .eq("stripe_subscription_id", stripe_subscription_id)
+                    .single()
+                    .execute()
+                )
+                return result.data
+            except Exception:
+                return None
+    
+        return next(
+            (
+                s
+                for s in self._mem_store["subscriptions"]
+                if s["stripe_subscription_id"] == stripe_subscription_id
+            ),
+            None
+        )
+    
+    
+    def update_subscription(self, subscription_id: str, updates: Dict[str, Any]) -> Dict[str, Any]:
+        updates["updated_at"] = self._now()
+    
+        if self._use_supabase:
+            try:
+                result = (
+                    self._client.table("subscriptions")
+                    .update(updates)
+                    .eq("subscription_id", subscription_id)
+                    .execute()
+                )
+                return result.data[0]
+            except Exception as exc:
+                raise DataServiceError(f"update_subscription failed: {exc}") from exc
+    
+        for i, s in enumerate(self._mem_store["subscriptions"]):
+            if s["subscription_id"] == subscription_id:
+                self._mem_store["subscriptions"][i].update(updates)
+                return self._mem_store["subscriptions"][i]
+    
+        raise DataServiceError(f"Subscription {subscription_id} not found.")
 
     # ── CV operations ────────────────────────────────────────────────────────
 
@@ -474,3 +568,112 @@ class DataService:
             "users_by_role": role_counts,
             "users_by_tier": tier_counts,
         }
+
+    # ── Consent records ───────────────────────────────────────────────────────
+
+    def save_consent_record(self, record: Dict[str, Any]) -> Dict[str, Any]:
+        """Appends an immutable consent record (append-only log)."""
+        if self._use_supabase:
+            try:
+                result = self._client.table("consent_records").insert(record).execute()
+                return result.data[0] if result.data else record
+            except Exception as exc:
+                raise DataServiceError(f"save_consent_record failed: {exc}") from exc
+
+        self._mem_store["consent_records"].append(record)
+        return record
+
+    def get_consent_records(self, user_id: str) -> List[Dict[str, Any]]:
+        """Returns all consent records for a user, oldest first."""
+        if self._use_supabase:
+            try:
+                result = (
+                    self._client.table("consent_records")
+                    .select("*")
+                    .eq("user_id", user_id)
+                    .order("recorded_at")
+                    .execute()
+                )
+                return result.data or []
+            except Exception as exc:
+                raise DataServiceError(f"get_consent_records failed: {exc}") from exc
+
+        records = [r for r in self._mem_store["consent_records"] if r["user_id"] == user_id]
+        return sorted(records, key=lambda r: r.get("recorded_at", ""))
+
+    def delete_consent_records(self, user_id: str) -> None:
+        """Hard-deletes all consent records for a user (GDPR erasure only)."""
+        if self._use_supabase:
+            try:
+                self._client.table("consent_records").delete().eq("user_id", user_id).execute()
+                return
+            except Exception as exc:
+                raise DataServiceError(f"delete_consent_records failed: {exc}") from exc
+
+        self._mem_store["consent_records"] = [
+            r for r in self._mem_store["consent_records"] if r["user_id"] != user_id
+        ]
+
+    # ── Draft autosave ────────────────────────────────────────────────────────
+
+    def upsert_draft(self, draft: Dict[str, Any]) -> Dict[str, Any]:
+        """Creates or replaces the draft for a user + cv_id pair."""
+        user_id = draft["user_id"]
+        cv_id = draft.get("cv_id")
+
+        if self._use_supabase:
+            try:
+                result = self._client.table("drafts").upsert(draft).execute()
+                return result.data[0] if result.data else draft
+            except Exception as exc:
+                raise DataServiceError(f"upsert_draft failed: {exc}") from exc
+
+        self._mem_store["drafts"] = [
+            d for d in self._mem_store["drafts"]
+            if not (d["user_id"] == user_id and d.get("cv_id") == cv_id)
+        ]
+        self._mem_store["drafts"].append(draft)
+        return draft
+
+    def get_draft(self, user_id: str, cv_id: Optional[str] = None) -> Optional[Dict[str, Any]]:
+        """Returns the current draft for a user + cv_id, or None."""
+        if self._use_supabase:
+            try:
+                query = self._client.table("drafts").select("*").eq("user_id", user_id)
+                if cv_id:
+                    query = query.eq("cv_id", cv_id)
+                else:
+                    query = query.is_("cv_id", "null")
+                result = query.single().execute()
+                return result.data
+            except Exception:
+                return None
+
+        return next(
+            (
+                d for d in self._mem_store["drafts"]
+                if d["user_id"] == user_id and d.get("cv_id") == cv_id
+            ),
+            None,
+        )
+
+    def delete_draft(self, user_id: str, cv_id: Optional[str] = None) -> bool:
+        """Deletes the draft for a user + cv_id. Returns True if found."""
+        if self._use_supabase:
+            try:
+                query = self._client.table("drafts").delete().eq("user_id", user_id)
+                if cv_id:
+                    query = query.eq("cv_id", cv_id)
+                else:
+                    query = query.is_("cv_id", "null")
+                query.execute()
+                return True
+            except Exception:
+                return False
+
+        before = len(self._mem_store["drafts"])
+        self._mem_store["drafts"] = [
+            d for d in self._mem_store["drafts"]
+            if not (d["user_id"] == user_id and d.get("cv_id") == cv_id)
+        ]
+        return len(self._mem_store["drafts"]) < before

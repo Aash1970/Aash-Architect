@@ -82,6 +82,7 @@ class ATSScore:
             "keyword_match_rate": round(self.keyword_match_rate, 1),
             "completeness_score": round(self.completeness_score, 1),
             "format_score": round(self.format_score, 1),
+            "grade": self.grade,
             "matched_keywords": self.matched_keywords,
             "missing_keywords": self.missing_keywords,
             "recommendations": [r.to_dict() for r in self.recommendations],

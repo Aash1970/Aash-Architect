@@ -4,10 +4,11 @@ Handles CV creation and editing.
 All business logic delegated to CVService.
 Validation uses app.validation.validators (called via service).
 UI uses proper input types: st.date_input, email text_input, numeric mobile.
+All user-visible strings via t(). Zero hardcoded user-visible strings.
 """
 
 import streamlit as st
-from datetime import date, datetime
+from datetime import date
 from typing import Dict, Any, List, Optional
 
 from app.i18n import t
@@ -22,8 +23,11 @@ from app.ui.components import (
 from app.validation.validators import (
     validate_personal_info, validate_work_experience,
     validate_education, validate_skill, validate_certification,
-    validate_language_entry, sanitize_text
+    validate_language_entry, sanitize_text, ValidationError
 )
+
+# Skill levels — stored as canonical English keys; displayed as translated labels
+_SKILL_LEVEL_KEYS = ["Beginner", "Intermediate", "Advanced", "Expert"]
 
 
 def render_cv_builder(cv_service, cv_dict: Optional[Dict[str, Any]] = None) -> None:
@@ -39,9 +43,9 @@ def render_cv_builder(cv_service, cv_dict: Optional[Dict[str, Any]] = None) -> N
 
     show_flash()
 
-    st.markdown(
-        f"### {'Edit CV' if is_edit else t('create_new_cv', lang)}"
-    )
+    heading = t("cv_edit", lang) if is_edit else t("create_new_cv", lang)
+    st.markdown(f"### {heading}")
+
     if is_edit:
         col1, col2, col3 = st.columns([3, 1, 1])
         with col2:
@@ -49,7 +53,6 @@ def render_cv_builder(cv_service, cv_dict: Optional[Dict[str, Any]] = None) -> N
         with col3:
             tier_badge(cv_dict.get("tier", "Free"))
 
-    # ── Tabs for each CV section ─────────────────────────────────────────────
     tab_personal, tab_work, tab_edu, tab_skills, tab_langs, tab_certs = st.tabs([
         t("section_personal_info", lang),
         t("section_work_experience", lang),
@@ -79,7 +82,6 @@ def render_cv_builder(cv_service, cv_dict: Optional[Dict[str, Any]] = None) -> N
 
     st.divider()
 
-    # ── Save / Cancel buttons ────────────────────────────────────────────────
     col_save, col_cancel = st.columns([1, 1])
     with col_save:
         if st.button(
@@ -104,27 +106,24 @@ def _render_personal_info_section(cv_dict: Optional[Dict], lang: str) -> None:
 
     col1, col2 = st.columns(2)
     with col1:
-        # Full name — min 2 chars enforced
         full_name = st.text_input(
             t("label_full_name", lang) + " *",
             value=pi.get("full_name", ""),
             key="pi_full_name",
             max_chars=100,
         )
-        # Email — email type enforced via placeholder and validation
         email = st.text_input(
             t("label_email", lang) + " *",
             value=pi.get("email", ""),
             key="pi_email",
             placeholder="name@example.com",
         )
-        # Mobile — numeric validation enforced
         mobile = st.text_input(
             t("label_mobile", lang) + " *",
             value=pi.get("mobile", ""),
             key="pi_mobile",
             placeholder="+44 7700 000000",
-            help="Digits, spaces, +, - and () only.",
+            help=t("err_mobile_invalid", lang),
         )
 
     with col2:
@@ -155,7 +154,6 @@ def _render_personal_info_section(cv_dict: Optional[Dict], lang: str) -> None:
         max_chars=1000,
     )
 
-    # Store to session for save
     st.session_state["_cv_personal_info"] = {
         "full_name": sanitize_text(full_name),
         "email": sanitize_text(email),
@@ -173,15 +171,18 @@ def _render_work_experience_section(cv_dict: Optional[Dict], lang: str) -> None:
 
     section_header(t("section_work_experience", lang), divider=False)
 
-    # Display existing entries
     if work_list:
-        for i, entry in enumerate(work_list):
+        for entry in work_list:
+            end = (
+                t("cv_dates_present", lang)
+                if entry.get("is_current")
+                else entry.get("end_date", "")
+            )
             with st.expander(
-                f"{entry.get('position', 'Role')} @ {entry.get('company', 'Company')}",
+                f"{entry.get('position', '')} @ {entry.get('company', '')}",
                 expanded=False,
             ):
-                st.write(f"**Dates:** {entry.get('start_date', '')} — "
-                         f"{'Present' if entry.get('is_current') else entry.get('end_date', '')}")
+                st.write(f"**{t('label_dates', lang)}:** {entry.get('start_date', '')} — {end}")
                 st.write(entry.get("description", ""))
 
     st.markdown("---")
@@ -193,7 +194,6 @@ def _render_work_experience_section(cv_dict: Optional[Dict], lang: str) -> None:
             company = st.text_input(t("label_company", lang) + " *", key="w_company")
             position = st.text_input(t("label_position", lang) + " *", key="w_position")
         with col2:
-            # MANDATORY: Use st.date_input for all date fields
             start_date = st.date_input(
                 t("label_start_date", lang) + " *",
                 key="w_start_date",
@@ -239,7 +239,6 @@ def _render_work_experience_section(cv_dict: Optional[Dict], lang: str) -> None:
                 if a.strip()
             ],
         }
-        # Validate before adding
         errors = validate_work_experience(entry_data)
         if errors:
             show_validation_errors(errors)
@@ -247,10 +246,9 @@ def _render_work_experience_section(cv_dict: Optional[Dict], lang: str) -> None:
             if "_cv_work_experience" not in st.session_state:
                 st.session_state["_cv_work_experience"] = list(work_list)
             st.session_state["_cv_work_experience"].append(entry_data)
-            set_flash("Work experience entry added.", "success")
+            set_flash(t("cv_work_added", lang), "success")
             st.rerun()
 
-    # Persist current list in session
     if "_cv_work_experience" not in st.session_state:
         st.session_state["_cv_work_experience"] = list(work_list)
 
@@ -263,13 +261,17 @@ def _render_education_section(cv_dict: Optional[Dict], lang: str) -> None:
 
     if edu_list:
         for entry in edu_list:
+            end = (
+                t("cv_dates_present", lang)
+                if entry.get("is_current")
+                else entry.get("end_date", "")
+            )
             with st.expander(
                 f"{entry.get('degree', '')} — {entry.get('institution', '')}",
                 expanded=False,
             ):
-                st.write(f"**Field:** {entry.get('field_of_study', '')}")
-                st.write(f"**Dates:** {entry.get('start_date', '')} — "
-                         f"{'Present' if entry.get('is_current') else entry.get('end_date', '')}")
+                st.write(f"**{t('label_field', lang)}:** {entry.get('field_of_study', '')}")
+                st.write(f"**{t('label_dates', lang)}:** {entry.get('start_date', '')} — {end}")
 
     st.markdown("---")
     st.markdown(f"**{t('btn_add', lang)} {t('section_education', lang)}**")
@@ -281,7 +283,6 @@ def _render_education_section(cv_dict: Optional[Dict], lang: str) -> None:
             degree = st.text_input(t("label_degree", lang) + " *", key="e_degree")
             field = st.text_input(t("label_field_of_study", lang) + " *", key="e_field")
         with col2:
-            # MANDATORY: Use st.date_input for dates
             start_date = st.date_input(
                 t("label_start_date", lang) + " *",
                 key="e_start",
@@ -316,7 +317,7 @@ def _render_education_section(cv_dict: Optional[Dict], lang: str) -> None:
             if "_cv_education" not in st.session_state:
                 st.session_state["_cv_education"] = list(edu_list)
             st.session_state["_cv_education"].append(entry_data)
-            set_flash("Education entry added.", "success")
+            set_flash(t("cv_education_added", lang), "success")
             st.rerun()
 
     if "_cv_education" not in st.session_state:
@@ -327,24 +328,31 @@ def _render_skills_section(cv_dict: Optional[Dict], lang: str) -> None:
     """Skills section."""
     skills_list = cv_dict.get("skills", []) if cv_dict else []
 
+    # Build translated label map: canonical key → display label
+    level_label_map = {k: t(f"skill_level_{k.lower()}", lang) for k in _SKILL_LEVEL_KEYS}
+    # Reverse map: display label → canonical key (for form submission)
+    label_to_key = {v: k for k, v in level_label_map.items()}
+
     section_header(t("section_skills", lang), divider=False)
 
     if skills_list:
         cols = st.columns(4)
         for i, s in enumerate(skills_list):
+            level_key = s.get("level", "Beginner")
+            level_display = level_label_map.get(level_key, level_key)
+            level_color = {
+                "Expert": "#059669",
+                "Advanced": "#7C3AED",
+                "Intermediate": "#2563EB",
+                "Beginner": "#6B7280",
+            }.get(level_key, "#6B7280")
             with cols[i % 4]:
-                level_color = {
-                    "Expert": "#059669",
-                    "Advanced": "#7C3AED",
-                    "Intermediate": "#2563EB",
-                    "Beginner": "#6B7280",
-                }.get(s.get("level", "Beginner"), "#6B7280")
                 st.markdown(
                     f'<div style="background:#F1F5F9; padding:8px 12px; '
                     f'border-radius:8px; margin:4px 0;">'
                     f'<strong>{s.get("name", "")}</strong><br/>'
                     f'<span style="color:{level_color}; font-size:12px;">'
-                    f'{s.get("level", "")}</span></div>',
+                    f'{level_display}</span></div>',
                     unsafe_allow_html=True,
                 )
 
@@ -354,9 +362,9 @@ def _render_skills_section(cv_dict: Optional[Dict], lang: str) -> None:
         with col1:
             skill_name = st.text_input(t("label_skill_name", lang) + " *", key="sk_name")
         with col2:
-            skill_level = st.selectbox(
+            skill_level_label = st.selectbox(
                 t("label_skill_level", lang),
-                ["Beginner", "Intermediate", "Advanced", "Expert"],
+                list(level_label_map.values()),
                 key="sk_level",
             )
         with col3:
@@ -365,9 +373,11 @@ def _render_skills_section(cv_dict: Optional[Dict], lang: str) -> None:
         add_submitted = st.form_submit_button(f"+ {t('btn_add', lang)}", type="primary")
 
     if add_submitted:
+        # Map translated label back to canonical English key for storage
+        skill_level_key = label_to_key.get(skill_level_label, "Beginner")
         entry = {
             "name": sanitize_text(skill_name),
-            "level": skill_level,
+            "level": skill_level_key,
             "category": sanitize_text(skill_cat) or None,
         }
         errors = validate_skill(entry)
@@ -377,7 +387,7 @@ def _render_skills_section(cv_dict: Optional[Dict], lang: str) -> None:
             if "_cv_skills" not in st.session_state:
                 st.session_state["_cv_skills"] = list(skills_list)
             st.session_state["_cv_skills"].append(entry)
-            set_flash("Skill added.", "success")
+            set_flash(t("cv_skill_added", lang), "success")
             st.rerun()
 
     if "_cv_skills" not in st.session_state:
@@ -414,7 +424,6 @@ def _render_languages_section(cv_dict: Optional[Dict], lang: str) -> None:
             "name": sanitize_text(lang_name),
             "proficiency": proficiency,
         }
-        from app.validation.validators import validate_language_entry
         errors = validate_language_entry(entry)
         if errors:
             show_validation_errors(errors)
@@ -422,7 +431,7 @@ def _render_languages_section(cv_dict: Optional[Dict], lang: str) -> None:
             if "_cv_languages" not in st.session_state:
                 st.session_state["_cv_languages"] = list(langs_list)
             st.session_state["_cv_languages"].append(entry)
-            set_flash("Language added.", "success")
+            set_flash(t("cv_language_added", lang), "success")
             st.rerun()
 
     if "_cv_languages" not in st.session_state:
@@ -437,7 +446,9 @@ def _render_certifications_section(cv_dict: Optional[Dict], lang: str) -> None:
 
     if certs_list:
         for c in certs_list:
-            st.write(f"**{c.get('name', '')}** — {c.get('issuer', '')} ({c.get('issue_date', '')})")
+            st.write(
+                f"**{c.get('name', '')}** — {c.get('issuer', '')} ({c.get('issue_date', '')})"
+            )
 
     st.markdown("---")
     with st.form("add_cert_form", clear_on_submit=True):
@@ -446,7 +457,6 @@ def _render_certifications_section(cv_dict: Optional[Dict], lang: str) -> None:
             cert_name = st.text_input(t("label_cert_name", lang) + " *", key="c_name")
             issuer = st.text_input(t("label_issuer", lang) + " *", key="c_issuer")
         with col2:
-            # MANDATORY: Use st.date_input for dates
             issue_date = st.date_input(
                 t("label_issue_date", lang) + " *",
                 key="c_issue",
@@ -471,7 +481,6 @@ def _render_certifications_section(cv_dict: Optional[Dict], lang: str) -> None:
             "credential_id": sanitize_text(credential_id) or None,
             "url": sanitize_text(cert_url) or None,
         }
-        from app.validation.validators import validate_certification
         errors = validate_certification(entry)
         if errors:
             show_validation_errors(errors)
@@ -479,7 +488,7 @@ def _render_certifications_section(cv_dict: Optional[Dict], lang: str) -> None:
             if "_cv_certifications" not in st.session_state:
                 st.session_state["_cv_certifications"] = list(certs_list)
             st.session_state["_cv_certifications"].append(entry)
-            set_flash("Certification added.", "success")
+            set_flash(t("cv_cert_added", lang), "success")
             st.rerun()
 
     if "_cv_certifications" not in st.session_state:
@@ -488,20 +497,18 @@ def _render_certifications_section(cv_dict: Optional[Dict], lang: str) -> None:
 
 def _handle_save(cv_service, cv_dict: Optional[Dict], lang: str) -> None:
     """Collects all section data from session state and saves via cv_service."""
-    from app.validation.validators import validate_personal_info, ValidationError
-
     user_id = get_user_id()
     role = get_role()
     tier = get_tier()
 
     pi = st.session_state.get("_cv_personal_info", {})
 
-    # Server-side validation of personal info
     errors = validate_personal_info(pi)
     if errors:
         show_validation_errors(errors)
         return
 
+    full_name = pi.get("full_name", t("cv_title_default", lang))
     cv_data = {
         "personal_info": pi,
         "work_experience": st.session_state.get("_cv_work_experience", []),
@@ -509,7 +516,7 @@ def _handle_save(cv_service, cv_dict: Optional[Dict], lang: str) -> None:
         "skills": st.session_state.get("_cv_skills", []),
         "languages": st.session_state.get("_cv_languages", []),
         "certifications": st.session_state.get("_cv_certifications", []),
-        "title": pi.get("full_name", "My CV") + "'s CV",
+        "title": f"{full_name}'s CV",
     }
 
     try:
@@ -528,9 +535,10 @@ def _handle_save(cv_service, cv_dict: Optional[Dict], lang: str) -> None:
                 requester_tier=tier,
             )
 
-        # Clear section buffers
-        for key in ["_cv_personal_info", "_cv_work_experience", "_cv_education",
-                    "_cv_skills", "_cv_languages", "_cv_certifications"]:
+        for key in [
+            "_cv_personal_info", "_cv_work_experience", "_cv_education",
+            "_cv_skills", "_cv_languages", "_cv_certifications",
+        ]:
             st.session_state.pop(key, None)
 
         set_flash(t("msg_saved", lang), "success")

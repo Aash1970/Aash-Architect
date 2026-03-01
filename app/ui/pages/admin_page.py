@@ -11,7 +11,7 @@ from typing import Dict, Any
 from app.i18n import t
 from app.ui.state import get_language, get_role, get_user_id, set_flash
 from app.ui.components import show_flash, section_header, role_badge, tier_badge
-from app.roles.permission_matrix import has_permission
+from app.services.permission_service import PermissionService
 
 
 def render_admin_page(admin_service) -> None:
@@ -22,7 +22,7 @@ def render_admin_page(admin_service) -> None:
 
     show_flash()
 
-    if not has_permission(role, "admin.panel.access"):
+    if not PermissionService.has_permission(role, "admin.panel.access"):
         st.error(t("msg_permission_denied", lang))
         return
 
@@ -30,11 +30,11 @@ def render_admin_page(admin_service) -> None:
 
     # Sub-navigation based on role
     admin_tabs = [t("admin_users", lang), t("admin_metrics", lang)]
-    if has_permission(role, "admin.coach.manage"):
+    if PermissionService.has_permission(role, "admin.coach.manage"):
         admin_tabs.append(t("admin_coaches", lang))
-    if has_permission(role, "admin.export.reports"):
+    if PermissionService.has_permission(role, "admin.export.reports"):
         admin_tabs.append(t("admin_reports", lang))
-    if has_permission(role, "sysadmin.panel.access"):
+    if PermissionService.has_permission(role, "sysadmin.panel.access"):
         admin_tabs.append("⚙ " + t("nav_sysadmin", lang))
 
     selected_tab = st.selectbox("Section", admin_tabs, key="admin_tab")
@@ -99,7 +99,7 @@ def _render_user_management(admin_service, role: str, lang: str) -> None:
                 status = "Active" if user.get("is_active", True) else "Inactive"
                 st.write(f"Status: {status}")
 
-            if has_permission(role, "user.change_role"):
+            if PermissionService.has_permission(role, "user.change_role"):
                 new_role = st.selectbox(
                     "Change Role",
                     ["User", "Coach", "Admin"],
@@ -122,7 +122,7 @@ def _render_user_management(admin_service, role: str, lang: str) -> None:
                     except Exception as exc:
                         st.error(str(exc))
 
-            if has_permission(role, "user.change_tier"):
+            if PermissionService.has_permission(role, "user.change_tier"):
                 new_tier = st.selectbox(
                     "Change Tier",
                     ["Free", "Premium", "Enterprise"],
@@ -145,7 +145,7 @@ def _render_user_management(admin_service, role: str, lang: str) -> None:
                     except Exception as exc:
                         st.error(str(exc))
 
-            if has_permission(role, "user.deactivate") and user.get("is_active", True):
+            if PermissionService.has_permission(role, "user.deactivate") and user.get("is_active", True):
                 if st.button(
                     "Deactivate", key=f"deact_{user['user_id']}", type="secondary"
                 ):
@@ -239,12 +239,12 @@ def _render_sysadmin_panel(admin_service, role: str, user_id: str, lang: str) ->
     """SystemAdmin-only controls."""
     st.markdown(f"### System Administration")
 
-    if not has_permission(role, "sysadmin.panel.access"):
+    if not PermissionService.has_permission(role, "sysadmin.panel.access"):
         st.error(t("msg_permission_denied", lang))
         return
 
     # Retention policies
-    if has_permission(role, "sysadmin.retention.override"):
+    if PermissionService.has_permission(role, "sysadmin.retention.override"):
         st.markdown("#### Retention Policies")
         policies = admin_service.list_retention_policies(requester_role=role)
         for p in policies:
@@ -255,7 +255,7 @@ def _render_sysadmin_panel(admin_service, role: str, user_id: str, lang: str) ->
             col4.write(f"Exports: {p['export_log_days']}d")
 
     # Language control
-    if has_permission(role, "sysadmin.language.control"):
+    if PermissionService.has_permission(role, "sysadmin.language.control"):
         st.markdown("#### Active Languages")
         active = admin_service.get_active_languages()
         st.write(f"Currently active: {', '.join(active)}")
