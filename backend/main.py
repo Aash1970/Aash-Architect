@@ -38,6 +38,7 @@ from app.services.cv_service import CVService
 from app.services.data_service import DataService
 from app.services.role_service import RoleService
 from app.services.tier_service import TierService
+from backend.api.routers import billing
 
 from backend.api.middleware.logging import StructuredLoggingMiddleware
 from backend.api.routers import admin, ats, auth, cv, drafts, gdpr, tier
@@ -128,6 +129,7 @@ def create_app() -> FastAPI:
     app.include_router(admin.router,  prefix="/admin",  tags=["admin"])
     app.include_router(gdpr.router,   prefix="/gdpr",   tags=["gdpr"])
     app.include_router(drafts.router, prefix="/drafts", tags=["drafts"])
+    app.include_router(billing.router, prefix="/billing", tags=["billing"])
 
     # ── System endpoints ──────────────────────────────────────────────────────
     @app.get("/health", tags=["system"], summary="Liveness check")

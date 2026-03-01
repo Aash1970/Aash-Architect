@@ -53,6 +53,8 @@ class DataService:
             "coach_notes": [],
             "consent_records": [],
             "drafts": [],
+            "subscriptions": [],
+
         }
 
     def _init_supabase(self):
@@ -176,6 +178,96 @@ class DataService:
             return True
         except DataServiceError:
             return False
+    # ── Subscription operations ──────────────────────────────────────────────
+
+    def create_subscription(self, sub_data: Dict[str, Any]) -> Dict[str, Any]:
+        if "subscription_id" not in sub_data:
+            sub_data["subscription_id"] = str(uuid.uuid4())
+        sub_data.setdefault("created_at", self._now())
+        sub_data.setdefault("updated_at", self._now())
+    
+        if self._use_supabase:
+            try:
+                result = (
+                    self._client.table("subscriptions")
+                    .insert(sub_data)
+                    .execute()
+                )
+                return result.data[0]
+            except Exception as exc:
+                raise DataServiceError(f"create_subscription failed: {exc}") from exc
+    
+        self._mem_store["subscriptions"].append(sub_data)
+        return sub_data
+    
+    
+    def get_subscription_by_user_id(self, user_id: str) -> Optional[Dict[str, Any]]:
+        if self._use_supabase:
+            try:
+                result = (
+                    self._client.table("subscriptions")
+                    .select("*")
+                    .eq("user_id", user_id)
+                    .single()
+                    .execute()
+                )
+                return result.data
+            except Exception:
+                return None
+
+        return next(
+            (
+                s for s in self._mem_store["subscriptions"] if s["user_id"] == user_id
+            ),
+            None
+        )
+    
+    
+    def get_subscription_by_stripe_id(self, stripe_subscription_id: str) -> Optional[Dict[str, Any]]:
+        if self._use_supabase:
+            try:
+                result = (
+                    self._client.table("subscriptions")
+                    .select("*")
+                    .eq("stripe_subscription_id", stripe_subscription_id)
+                    .single()
+                    .execute()
+                )
+                return result.data
+            except Exception:
+                return None
+    
+        return next(
+            (
+                s
+                for s in self._mem_store["subscriptions"]
+                if s["stripe_subscription_id"] == stripe_subscription_id
+            ),
+            None
+        )
+    
+    
+    def update_subscription(self, subscription_id: str, updates: Dict[str, Any]) -> Dict[str, Any]:
+        updates["updated_at"] = self._now()
+    
+        if self._use_supabase:
+            try:
+                result = (
+                    self._client.table("subscriptions")
+                    .update(updates)
+                    .eq("subscription_id", subscription_id)
+                    .execute()
+                )
+                return result.data[0]
+            except Exception as exc:
+                raise DataServiceError(f"update_subscription failed: {exc}") from exc
+    
+        for i, s in enumerate(self._mem_store["subscriptions"]):
+            if s["subscription_id"] == subscription_id:
+                self._mem_store["subscriptions"][i].update(updates)
+                return self._mem_store["subscriptions"][i]
+    
+        raise DataServiceError(f"Subscription {subscription_id} not found.")
 
     # ── CV operations ────────────────────────────────────────────────────────
 

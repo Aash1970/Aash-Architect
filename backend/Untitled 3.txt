@@ -1,0 +1,14 @@
+"""
+Permission Service
+
+This file acts as a safe boundary between UI and domain logic.
+UI must not import permission_matrix directly.
+"""
+
+from app.roles.permission_matrix import has_permission as _has_permission
+
+
+class PermissionService:
+    @staticmethod
+    def has_permission(role: str, permission: str) -> bool:
+        return _has_permission(role, permission)
