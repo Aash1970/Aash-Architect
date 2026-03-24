@@ -79,6 +79,7 @@ class ATSScore:
     def to_dict(self) -> Dict[str, Any]:
         return {
             "overall_score": round(self.overall_score, 1),
+            "grade": self.grade,
             "keyword_match_rate": round(self.keyword_match_rate, 1),
             "completeness_score": round(self.completeness_score, 1),
             "format_score": round(self.format_score, 1),

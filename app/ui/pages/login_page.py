@@ -145,7 +145,7 @@ def _render_register_form(auth_service, lang: str) -> None:
         if not email:
             errors.append(f"{t('label_email', lang)}: {t('err_required', lang)}")
         if not password or len(password) < 8:
-            errors.append(f"{t('label_password', lang)}: must be at least 8 characters.")
+            errors.append(f"{t('label_password', lang)}: {t('err_min_length', lang, min=8)}")
 
         if errors:
             for e in errors:
@@ -159,6 +159,6 @@ def _render_register_form(auth_service, lang: str) -> None:
                 full_name=full_name.strip(),
             )
             set_flash(t("msg_login_success", lang), "success")
-            st.info("Registration successful! Please log in.")
+            st.info(t("msg_register_success", lang))
         except Exception as exc:
             st.error(str(exc))

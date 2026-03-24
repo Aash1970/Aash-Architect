@@ -2,6 +2,7 @@
 Shared UI Components — Streamlit only.
 Reusable UI building blocks. No business logic here.
 All display strings loaded via i18n.t().
+Grade is read from score dict (computed by scoring engine), not derived here.
 """
 
 import streamlit as st
@@ -38,32 +39,43 @@ def show_validation_errors(errors: Dict[str, List[str]]) -> None:
 
 
 def tier_badge(tier: str) -> None:
-    """Renders a styled tier badge."""
+    """Renders a styled tier badge with translated tier name."""
+    lang = get_language()
     colors = {
         "Free": "#6B7280",
         "Premium": "#7C3AED",
         "Enterprise": "#059669",
     }
     color = colors.get(tier, "#6B7280")
+    display = t(f"tier_{tier.lower()}", lang)
     st.markdown(
         f'<span style="background:{color}; color:white; padding:2px 10px; '
-        f'border-radius:12px; font-size:12px; font-weight:600;">{tier}</span>',
+        f'border-radius:12px; font-size:12px; font-weight:600;">{display}</span>',
         unsafe_allow_html=True,
     )
 
 
 def role_badge(role: str) -> None:
-    """Renders a styled role badge."""
+    """Renders a styled role badge with translated role name."""
+    lang = get_language()
     colors = {
         "User": "#3B82F6",
         "Coach": "#F59E0B",
         "Admin": "#EF4444",
         "SystemAdmin": "#1F2937",
     }
+    role_key_map = {
+        "User": "role_user",
+        "Coach": "role_coach",
+        "Admin": "role_admin",
+        "SystemAdmin": "role_sysadmin",
+    }
     color = colors.get(role, "#3B82F6")
+    key = role_key_map.get(role, f"role_{role.lower()}")
+    display = t(key, lang)
     st.markdown(
         f'<span style="background:{color}; color:white; padding:2px 10px; '
-        f'border-radius:12px; font-size:12px; font-weight:600;">{role}</span>',
+        f'border-radius:12px; font-size:12px; font-weight:600;">{display}</span>',
         unsafe_allow_html=True,
     )
 
@@ -76,9 +88,9 @@ def section_header(title: str, divider: bool = True) -> None:
 
 
 def ats_score_display(score_dict: Dict[str, Any], lang: str = "en") -> None:
-    """Renders an ATS score result card."""
+    """Renders an ATS score result card. Grade read from score_dict (set by service layer)."""
     overall = score_dict.get("overall_score", 0)
-    grade = "A" if overall >= 85 else "B" if overall >= 70 else "C" if overall >= 55 else "D" if overall >= 40 else "F"
+    grade = score_dict.get("grade", "F")
     color = "#059669" if overall >= 70 else "#D97706" if overall >= 40 else "#DC2626"
 
     st.markdown(
@@ -88,7 +100,7 @@ def ats_score_display(score_dict: Dict[str, Any], lang: str = "en") -> None:
             <div style="display:flex; justify-content:space-between; align-items:center;">
                 <div>
                     <h2 style="color:{color}; margin:0;">{overall:.1f}/100</h2>
-                    <p style="color:#64748B; margin:0;">Grade: {grade}</p>
+                    <p style="color:#64748B; margin:0;">{t("ats_grade", lang)}: {grade}</p>
                 </div>
                 <div style="text-align:right;">
                     <p style="color:#64748B; margin:0;">{t("ats_match_rate", lang)}</p>
@@ -105,12 +117,15 @@ def ats_score_display(score_dict: Dict[str, Any], lang: str = "en") -> None:
     col1, col2 = st.columns(2)
     with col1:
         st.metric(t("ats_score", lang), f"{overall:.1f}")
-        st.metric("Completeness", f"{score_dict.get('completeness_score', 0):.1f}%")
+        st.metric(t("ats_completeness", lang), f"{score_dict.get('completeness_score', 0):.1f}%")
     with col2:
-        st.metric("Format Score", f"{score_dict.get('format_score', 0):.1f}%")
+        st.metric(t("ats_format_score", lang), f"{score_dict.get('format_score', 0):.1f}%")
         matched = len(score_dict.get("matched_keywords", []))
         missing = len(score_dict.get("missing_keywords", []))
-        st.metric("Keywords", f"{matched} matched / {missing} missing")
+        st.metric(
+            t("ats_keywords_summary", lang),
+            f"{matched} {t('ats_matched_count', lang)} / {missing} {t('ats_missing_count', lang)}"
+        )
 
 
 def upgrade_prompt(feature_name: str, required_tier: str, lang: str = "en") -> None:

@@ -2,6 +2,7 @@
 Coach Review Page — Streamlit UI only.
 For Coach role: view assigned users' CVs and add notes.
 No business logic here. All operations via cv_service.
+No permission_matrix imports — all checks via role_service.
 """
 
 import streamlit as st
@@ -10,10 +11,9 @@ from typing import List, Dict, Any
 from app.i18n import t
 from app.ui.state import get_language, get_role, get_user_id, set_flash
 from app.ui.components import show_flash, section_header
-from app.roles.permission_matrix import has_permission
 
 
-def render_coach_page(cv_service, data_service) -> None:
+def render_coach_page(cv_service, data_service, role_service) -> None:
     """Renders the coach review panel."""
     lang = get_language()
     role = get_role()
@@ -22,22 +22,23 @@ def render_coach_page(cv_service, data_service) -> None:
     show_flash()
     section_header(t("nav_coach", lang))
 
-    if not has_permission(role, "cv.read_assigned"):
-        st.error(t("msg_permission_denied", lang))
+    # Get assigned users
+    try:
+        coach_profile = data_service.get_user(user_id)
+    except Exception as exc:
+        st.error(str(exc))
         return
 
-    # Get assigned users
-    coach_profile = data_service.get_user(user_id)
     assigned_ids = coach_profile.get("assigned_user_ids", []) if coach_profile else []
 
     if not assigned_ids:
-        st.info("No users are currently assigned to you.")
+        st.info(t("coach_no_assigned_users", lang))
         return
 
     st.markdown(f"**{t('coach_assigned_users', lang)}: {len(assigned_ids)}**")
 
     selected_user_id = st.selectbox(
-        "Select User",
+        t("coach_select_user", lang),
         assigned_ids,
         key="coach_user_selector",
     )
@@ -46,14 +47,18 @@ def render_coach_page(cv_service, data_service) -> None:
         return
 
     # Get user's CVs
-    cvs = cv_service.list_cvs(
-        requester_id=user_id,
-        requester_role=role,
-        target_user_id=selected_user_id,
-    )
+    try:
+        cvs = cv_service.list_cvs(
+            requester_id=user_id,
+            requester_role=role,
+            target_user_id=selected_user_id,
+        )
+    except Exception as exc:
+        st.error(str(exc))
+        return
 
     if not cvs:
-        st.info("This user has no CVs yet.")
+        st.info(t("coach_no_cvs", lang))
         return
 
     cv_options = {
@@ -61,7 +66,7 @@ def render_coach_page(cv_service, data_service) -> None:
         for c in cvs
     }
     selected_cv_label = st.selectbox(
-        "Select CV",
+        t("coach_select_cv", lang),
         list(cv_options.keys()),
         key="coach_cv_selector",
     )
@@ -71,11 +76,15 @@ def render_coach_page(cv_service, data_service) -> None:
         return
 
     # Load full CV
-    cv = cv_service.get_cv(
-        cv_id=selected_cv_id,
-        requester_id=user_id,
-        requester_role=role,
-    )
+    try:
+        cv = cv_service.get_cv(
+            cv_id=selected_cv_id,
+            requester_id=user_id,
+            requester_role=role,
+        )
+    except Exception as exc:
+        st.error(str(exc))
+        return
 
     _render_cv_summary(cv, lang)
 
@@ -83,33 +92,36 @@ def render_coach_page(cv_service, data_service) -> None:
     st.markdown(f"### {t('coach_notes', lang)}")
 
     # Existing notes
-    notes = cv_service.get_coach_notes(
-        cv_id=selected_cv_id,
-        requester_id=user_id,
-        requester_role=role,
-    )
-    if notes:
-        for note in notes:
-            with st.expander(
-                f"Note — {note.get('created_at', '')[:10]}",
-                expanded=True,
-            ):
-                st.write(note.get("note_text", ""))
+    try:
+        notes = cv_service.get_coach_notes(
+            cv_id=selected_cv_id,
+            requester_id=user_id,
+            requester_role=role,
+        )
+        if notes:
+            for note in notes:
+                with st.expander(
+                    f"Note — {note.get('created_at', '')[:10]}",
+                    expanded=True,
+                ):
+                    st.write(note.get("note_text", ""))
+    except Exception as exc:
+        st.error(str(exc))
 
-    # Add new note
-    if has_permission(role, "cv.comment_assigned"):
+    # Add new note — display conditional on permission (service will also enforce)
+    if role_service.check_permission(role, "cv.comment_assigned"):
         with st.form("add_note_form"):
             note_text = st.text_area(
-                "Add a note",
+                t("coach_add_note_label", lang),
                 height=120,
-                placeholder="Provide feedback for the candidate...",
+                placeholder=t("coach_add_note_placeholder", lang),
                 key="coach_note_text",
             )
-            submitted = st.form_submit_button("Add Note", type="primary")
+            submitted = st.form_submit_button(t("coach_btn_add_note", lang), type="primary")
 
         if submitted:
             if not note_text or len(note_text.strip()) < 5:
-                st.error("Note must be at least 5 characters.")
+                st.error(t("coach_note_min_length", lang))
             else:
                 try:
                     cv_service.add_coach_note(
@@ -118,7 +130,7 @@ def render_coach_page(cv_service, data_service) -> None:
                         coach_id=user_id,
                         coach_role=role,
                     )
-                    set_flash("Note added successfully.", "success")
+                    set_flash(t("coach_note_added", lang), "success")
                     st.rerun()
                 except Exception as exc:
                     st.error(str(exc))
@@ -127,26 +139,32 @@ def render_coach_page(cv_service, data_service) -> None:
 def _render_cv_summary(cv: Dict[str, Any], lang: str) -> None:
     """Renders a read-only CV summary for the coach."""
     pi = cv.get("personal_info", {})
-    st.markdown(f"### {pi.get('full_name', 'Unknown')}")
+    st.markdown(f"### {pi.get('full_name', '?')}")
 
     col1, col2 = st.columns(2)
     with col1:
-        st.write(f"**Email:** {pi.get('email', '')}")
-        st.write(f"**Location:** {pi.get('location', '')}")
+        st.write(f"**{t('coach_label_email', lang)}:** {pi.get('email', '')}")
+        st.write(f"**{t('coach_label_location', lang)}:** {pi.get('location', '')}")
     with col2:
-        st.write(f"**Mobile:** {pi.get('mobile', '')}")
+        st.write(f"**{t('coach_label_mobile', lang)}:** {pi.get('mobile', '')}")
         if pi.get("linkedin"):
-            st.write(f"**LinkedIn:** {pi['linkedin']}")
+            st.write(f"**{t('coach_label_linkedin', lang)}:** {pi['linkedin']}")
 
     if pi.get("summary"):
         st.markdown(f"*{pi['summary']}*")
 
     work = cv.get("work_experience", [])
     if work:
-        st.markdown(f"**Experience** ({len(work)} entries)")
+        st.markdown(
+            f"**{t('section_work_experience', lang)}** "
+            f"({len(work)} {t('label_entries', lang)})"
+        )
         for w in work[:3]:
             st.write(f"• {w.get('position', '')} at {w.get('company', '')}")
 
     skills = cv.get("skills", [])
     if skills:
-        st.markdown(f"**Skills:** " + ", ".join(s.get("name", "") for s in skills[:10]))
+        st.markdown(
+            f"**{t('section_skills', lang)}:** "
+            + ", ".join(s.get("name", "") for s in skills[:10])
+        )
